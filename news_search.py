@@ -17,17 +17,24 @@ class newsUpdater:
         news_links = search_result.select(".bx > .news_wrap > a")
         return news_links
 
-    def get_updated_news(self, old_links):
-        # new_links = []
-        # links = self._get_news()
-        new_links = [link["href"] for link in self._get_news() if link not in old_links]
+    def get_updated_news(self, old_links: list):
+        new_links = []
+        links = self._get_news()
+        # new_links = [link["href"] for link in self._get_news() if link not in old_links]
+        # news = self._get_news()
+        for link in links:
+            if link["href"] not in old_links:
+                new_links.append(link["href"])
         return new_links
 
 
 if __name__ == "__main__":
     a = newsUpdater(query="카카오")
-    news_ = a.get_updated_news()
-    newer = a.get_updated_news(news_[:-5])
-
+    news_ = a.get_updated_news([])
+    print(news_)
+    newer = a.get_updated_news(news_[:-3])
+    for line in news_:
+        print(line)
+    print("---")
     for line in newer:
-        print(line.get_text(), line["href"])
+        print(line)

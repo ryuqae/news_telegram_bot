@@ -40,7 +40,6 @@ with open("./access_token.txt") as f:
 
 
 # 기존에 보냈던 링크를 담아둘 리스트
-
 # archieved_txt = [file for file in os.listdir("old_news_link") if file.endswith(".txt")]
 
 with open("user_db.json", "r") as f:
@@ -51,11 +50,8 @@ with open("user_db.json", "r") as f:
 #     "1852535116": {"오오": ["d", "e"], "카카오": ["f", "g"]},
 # }
 
-# """
-# user_db = {"62786931": {"삼성전자":[]}, "1852535116": {"오오":[], "카카오":[]}}
 
-# """
-
+# Minimum duration for notification
 MIN_DUR = 10
 
 
@@ -118,7 +114,7 @@ def current_keyword(update: Update, context: CallbackContext) -> None:
         text = (
             f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!"
             if len(keywords) == 0
-            else f"현재 키워드 목록: [{' | '.join(list(keywords))}]"
+            else f"{bookmark} 현재 키워드 목록: [{' | '.join(list(keywords))}]"
         )
         context.bot.send_message(chat_id, text)
 
@@ -181,10 +177,7 @@ def button(update: Update, context: CallbackContext) -> None:
         # Add a keyword to the list
         current_keyword(update, context)
         context.bot.send_message(chat_id=chat_id, text=f"추가 혹은 삭제할 키워드를 입력하세요.")
-        # print(context.bot.get_updates())
-        # print("여기서 어떻게 키워드 인풋 받아올지")
-        # MessageHandler(Filters.text & ~Filters.command, add_keyword)
-        # print("그냥 지나치는듯")
+
     elif choice == "2":
         current_keyword(update, context)
 
@@ -199,12 +192,11 @@ def button(update: Update, context: CallbackContext) -> None:
                 text=f"{siren} 아직 설정된 알림이 없습니다.\n/set [설정할 알림주기(단위: 분)]",
             )
     elif choice == "4":
+        # Get news immediately
         context.job_queue.run_once(send_links, 0, context=chat_id, name=str(chat_id))
 
 
 def send_links(context: CallbackContext) -> None:
-    # global old_links, user_db
-
     job = context.job
     chat_id = job.context
     try:
@@ -312,9 +304,6 @@ def main() -> None:
     updater = Updater(TOKEN)
 
     dp = updater.dispatcher
-    # jq = updater.job_queue
-    # job_minute = jq.run_repeating(send_links, interval=10, first=0)
-    # job_minute = jq.run_repeating(callback_minute, interval=60, first=10)
 
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("set", set_timer))
@@ -330,7 +319,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-    # 스케쥴러 세팅 및 작동
-    # sched.add_job(send_links, "interval", minutes=10)
-    # sched.start()

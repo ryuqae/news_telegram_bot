@@ -1,5 +1,8 @@
-import telegram
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Update,
+)
 from telegram.ext import (
     Filters,
     CommandHandler,
@@ -7,50 +10,58 @@ from telegram.ext import (
     Updater,
     CallbackQueryHandler,
     CallbackContext,
-    ConversationHandler,
 )
-
+from emoji import emojize
 import logging
-
-# from apscheduler.schedulers.blocking import BlockingScheduler
-
+import json
+import os
 from news_search import newsUpdater
 
+
+# Logger
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
+# Predefined emojis
+bookmark = emojize(":bookmark:", use_aliases=True)
+bell = emojize(":bell:", use_aliases=True)
+lightning = emojize(":high_voltage:", use_aliases=True)
+good = emojize(":smiling_face_with_sunglasses:", use_aliases=True)
+siren = emojize(":police_car_light:", use_aliases=True)
+plus = emojize(":plus:", use_aliases=True)
+minus = emojize(":minus:", use_aliases=True)
 
 # Authentication
 with open("./access_token.txt") as f:
     lines = f.readlines()
     TOKEN = lines[0].strip()
 
-bot = telegram.Bot(token=TOKEN)
-
-
-# chat_id = bot.getUpdates()[-1].message.chat.id  # 봇에 메시지를 보내기 위한 chat id 구하기
-
-# sched = BlockingScheduler()
-
 
 # 기존에 보냈던 링크를 담아둘 리스트
-old_links = dict()
-keywords = set()
 
-# update = bot.get_updates()
+# archieved_txt = [file for file in os.listdir("old_news_link") if file.endswith(".txt")]
 
-# for u in updates:
-#     print(u.message["chat"]["username"], u.message["chat"])
+with open("user_db.json", "r") as f:
+    user_db = json.load(f)
 
-# chat_id = bot.getUpdates()[-1].message.chat.id  # 가장 최근에 온 메세지의 chat id를 가져옵니다
-# print(chat_id)
+# user_db = {
+#     "62786931": {"삼성전자": ["a", "b", "c"]},
+#     "1852535116": {"오오": ["d", "e"], "카카오": ["f", "g"]},
+# }
+
+# """
+# user_db = {"62786931": {"삼성전자":[]}, "1852535116": {"오오":[], "카카오":[]}}
+
+# """
+
+MIN_DUR = 10
 
 
+# Get chat_id to send message under each context
 def get_chat_id(update, context):
     chat_id = -1
-
     if update.message is not None:
         # text message
         chat_id = update.message.chat.id
@@ -60,22 +71,25 @@ def get_chat_id(update, context):
     elif update.poll is not None:
         # answer in Poll
         chat_id = context.bot_data[update.poll.id]
-
     return chat_id
 
 
 def start(update: Update, context: CallbackContext) -> None:
+    chat_id = get_chat_id(update, context)
     options = [
         [
-            InlineKeyboardButton(text="키워드 추가", callback_data="1"),
-            InlineKeyboardButton(text="키워드 삭제", callback_data="2"),
+            # InlineKeyboardButton(text="키워드 편집", callback_data="1"),
+            InlineKeyboardButton(
+                text=f"{bookmark} 현재 키워드 목록 {bookmark}", callback_data="2"
+            ),
         ],
         [
-            InlineKeyboardButton(text="현재 키워드 목록", callback_data="3"),
-            InlineKeyboardButton(text="검색주기 설정", callback_data="4"),
+            InlineKeyboardButton(text=f"{bell} 설정된 뉴스 알림 {bell}", callback_data="3"),
         ],
         [
-            InlineKeyboardButton(text="지금 검색", callback_data="5"),
+            InlineKeyboardButton(
+                text=f"{lightning} 지금 검색 {lightning}", callback_data="4"
+            ),
         ],
     ]
 
@@ -84,52 +98,73 @@ def start(update: Update, context: CallbackContext) -> None:
 
     # Message with the buttons
     context.bot.send_message(
-        chat_id=get_chat_id(update, context),
-        text="원하는 작업이 무엇인가?",
+        chat_id=chat_id,
+        text="원하는 작업을 선택하세요.",
         reply_markup=reply_markup,
     )
 
-    # selection from callback
-    # choice = update.callback_query.data
-    # if choice == "1":
-    #     # Choice 1: Text
-    #     update.callback_query.message.edit_text("You have chosen Text")
 
+def current_keyword(update: Update, context: CallbackContext) -> None:
+    chat_id = get_chat_id(update, context)
+    try:
+        old_links_dict = user_db[str(chat_id)]
+    except KeyError:
+        user_db[str(chat_id)] = {}
+        print("new user added!")
 
-def current_keyword(update: Update, context: CallbackContext):
-    print(update.message)
-    if len(keywords) == 0:
-        context.bot.send_message(get_chat_id(update, context), "키워드를 추가하세요 /start")
-
-    else:
-        context.bot.send_message(
-            get_chat_id(update, context), f"현재 키워드 [{' | '.join(list(keywords))}]"
+    try:
+        keywords = old_links_dict.keys()
+        # keywords = user_db[str(chat_id)].keys()
+        text = (
+            f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!"
+            if len(keywords) == 0
+            else f"현재 키워드 목록: [{' | '.join(list(keywords))}]"
         )
+        context.bot.send_message(chat_id, text)
+
+    except KeyError:
+        old_links_dict = {}
+        context.bot.send_message(chat_id, f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!")
 
 
 def add_keyword(update: Update, context: CallbackContext) -> None:
-    global keywords
     user = update.message.from_user
+    chat_id = get_chat_id(update, context)
+    try:
+        old_links_dict = user_db[str(chat_id)]
+    except KeyError:
+        user_db[str(chat_id)] = {}
+        print("new user added!")
+
+    keywords = old_links_dict.keys()
+    # print(old_links_dict, keywords)
+
+    print(f"user is {user.first_name}")
+
     input_keyword = update.message.text.strip()
-    print(input_keyword, keywords)
+    print(f"new keyword is {input_keyword}")
 
-    if "초기화" in input_keyword.split():
-        keywords = set()
+    if input_keyword == "초기화!":
+        user_db[str(chat_id)] = dict()
     elif input_keyword not in keywords:
-        update.message.reply_text(f"{user.first_name}(이)가 추가할 키워드는 [{input_keyword}]")
-        keywords.add(input_keyword)
-        # Add new keyword into old_links
-        if input_keyword not in old_links.keys():
-            old_links[input_keyword] = []
+        # If there is no keyword in the list, then add keyword and its new list to store old links
+        old_links_dict[input_keyword] = []
+        update.message.reply_text(f"{plus} [{input_keyword}] 추가 완료!")
+
+        # # Add new keyword into old_links
+        # if input_keyword not in old_links.keys():
+        #     old_links[input_keyword] = []
     else:
-        update.message.reply_text(f"{user.first_name}(이)가 제거할 키워드는 [{input_keyword}]")
-        keywords.remove(input_keyword)
+        del old_links_dict[input_keyword]
+        update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
+
+    # Save personal keywords as a json at user_db.json
+    with open("user_db.json", "w+") as f:
+        temp = json.dumps(user_db, ensure_ascii=False, sort_keys=True, indent=4)
+        f.write(temp)
+        print("user_db.json is written successfully!")
+
     current_keyword(update, context)
-
-
-# def remove_keyword(update: Update, context: CallbackContext) -> None:
-#     user = update.message.from_user
-#     update.message.reply_text(f"{user.name}(이)가 삭제할 키워드는 [{update.message.text}]")
 
 
 def button(update: Update, context: CallbackContext) -> None:
@@ -137,100 +172,165 @@ def button(update: Update, context: CallbackContext) -> None:
     choice = query.data
     # print(query)
 
-    query.edit_message_text(text=f"네, 알겠습니다!")
+    chat_id = get_chat_id(update, context)
+    # chat_id = update.effective_chat.id
+
+    query.edit_message_text(text=f"네, 알겠습니다! {good}")
 
     if choice == "1":
         # Add a keyword to the list
-        context.bot.send_message(chat_id=update.effective_chat.id, text=f"추가할 키워드는 무엇?")
+        current_keyword(update, context)
+        context.bot.send_message(chat_id=chat_id, text=f"추가 혹은 삭제할 키워드를 입력하세요.")
+        # print(context.bot.get_updates())
+        # print("여기서 어떻게 키워드 인풋 받아올지")
+        # MessageHandler(Filters.text & ~Filters.command, add_keyword)
+        # print("그냥 지나치는듯")
     elif choice == "2":
-        # Remove a selected keyword from the list
-        pass
-    elif choice == "3":
         current_keyword(update, context)
 
+    elif choice == "3":
+        try:
+            context.bot.send_message(
+                chat_id=chat_id, text=f"{bell} 현재 설정된 알림주기: {due}분"
+            )
+        except NameError:
+            context.bot.send_message(
+                chat_id=chat_id,
+                text=f"{siren} 아직 설정된 알림이 없습니다.\n/set [설정할 알림주기(단위: 분)]",
+            )
     elif choice == "4":
-        pass
-
-    else:
-        send_links(update, context)
+        context.job_queue.run_once(send_links, 0, context=chat_id, name=str(chat_id))
 
 
-def send_links(update: Update, context: CallbackContext) -> None:
-    global old_links, keywords
+def send_links(context: CallbackContext) -> None:
+    # global old_links, user_db
+
+    job = context.job
+    chat_id = job.context
+    try:
+        old_links_dict = user_db[str(chat_id)]
+    except KeyError:
+        user_db[str(chat_id)] = {}
+        print("new user added!")
+
+    keywords = user_db[str(chat_id)].keys()
 
     for keyword in keywords:
         updater = newsUpdater(keyword)
-        # print(f"saved links : {sorted(old_links[keyword])}")
-        new_links = updater.get_updated_news(old_links[keyword])
-        # print(f"new links : {sorted(new_links)}\n===============\n")
+        new_links = updater.get_updated_news(old_links_dict[keyword])
 
         if new_links:
-            context.bot.sendMessage(
-                chat_id=get_chat_id(update, context),
-                text=f"=====\n{keyword} 관련 새로운 뉴스 {len(new_links)}건\n=====",
+            context.bot.send_message(
+                chat_id=chat_id,
+                text=f"=====\n{siren} {keyword} 관련 새로운 뉴스 {len(new_links)}건 {siren}\n=====",
             )
             for link in new_links:
-                context.bot.sendMessage(chat_id=get_chat_id(update, context), text=link)
-                # bot.sendMessage(chat_id=62786931, text=link)
+                context.bot.send_message(chat_id=chat_id, text=link)
         else:
-            context.bot.sendMessage(
-                chat_id=get_chat_id(update, context),
+            context.bot.send_message(
+                chat_id=chat_id,
                 text=f"=====\n{keyword} 관련 새로운 뉴스 없음!\n=====",
             )
 
-        old_links[keyword] += new_links.copy()
-        # old_links = list(set(old_links))
+        old_links_dict[keyword] += new_links.copy()
+
+        # with open(f"old_news_link/{keyword}.txt", "a+") as file:
+        #     for link in new_links:
+        #         file.write(f"{link}\n")
+
+    with open("user_db.json", "w+") as f:
+        temp = json.dumps(user_db, ensure_ascii=False, sort_keys=True, indent=4)
+        f.write(temp)
+        print("user_db.json is written successfully!")
 
 
 def help_command(update: Update, context: CallbackContext) -> None:
     """Displays info on how to use the bot."""
-    update.message.reply_text("/hey 입력하면 시작할 수 있음")
-    print(old_links)
+    update.message.reply_text(
+        "/start : 현재 상태 확인\n\n1. 키워드 편집\n현재 목록에 없는 키워드를 입력하면 추가되고, 이미 추가된 키워드를 다시 한 번 입력하면 삭제됩니다.\n\n2. 키워드 초기화\n[초기화!]를 입력하면 저장된 키워드가 모두 삭제됩니다.\n\n3. 뉴스 알림주기 설정\n/set [설정할 알림주기(단위: 분)]\n알림 해제 : /unset"
+    )
 
 
-# def handler(msg):
-#     content_type, chat_type, chat_id, msg_date, msg_id = telepot.glance(msg, long=True)
+def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
+    """Remove job with given name. Returns whether job was removed."""
+    current_jobs = context.job_queue.get_jobs_by_name(name)
+    if not current_jobs:
+        return False
+    for job in current_jobs:
+        job.schedule_removal()
+    return True
 
-#     print(msg)
 
-#     if content_type == "text":
-#         str_message = msg["text"]
-#         if str_message[0:1] == "/":
-#             args = str_message.split(" ")
-#             command = args[0]
-#             del args[0]
+def set_timer(update: Update, context: CallbackContext):
+    global due
+    chat_id = update.message.chat_id
+    try:
+        # args[0] should contain the time for the timer in seconds.
+        due = int(context.args[0])
+        if due < MIN_DUR:
+            update.message.reply_text(
+                f"{siren} 최소 {MIN_DUR}분 이상으로 지정해주세요.\n현재 입력값: {due}분"
+            )
+            return
+        job_removed = remove_job_if_exists(str(chat_id), context)
 
-#             #'/뉴스 <원하는 기업>'으로 텔레그램 봇에 입력하면 get_news 함수가 실행된다.
-#             # 추후에 한 코드 안에 다른 기능도 넣을 예정이라 이렇게 구분 지었다.
-#             if command == "/뉴스":
-#                 n = " ".join(args)
-#                 new_links = get_news(n)
-#                 for link in new_links:
-#                     bot.sendMessage(chat_id, text=link)
+        context.job_queue.run_repeating(
+            send_links, due * 60, context=chat_id, name=str(chat_id)
+        )
+        text = f"{good} 뉴스 알림주기 설정 완료!\n지금부터 {due}분마다 알려드릴게요."
+        if job_removed:
+            text += "\n(기존에 설정된 값은 삭제됩니다.)"
+        update.message.reply_text(text)
+
+    except (IndexError, ValueError):
+        update.message.reply_text("/set [설정할 알림주기(단위: 분)]")
+
+
+def unset(update: Update, context: CallbackContext) -> None:
+    """Remove the job if the user changed their mind."""
+    chat_id = update.message.chat_id
+    job_removed = remove_job_if_exists(str(chat_id), context)
+    text = f"{good} 더이상 뉴스알림이 울리지 않습니다." if job_removed else f"{siren} 설정된 뉴스알림이 없습니다."
+    update.message.reply_text(text)
 
 
 def main() -> None:
     """
     Run the bot
     """
+
+    # Read the archieved old links from the text files in old_news_link directory
+    # for file in archieved_txt:
+    #     with open(os.path.join("old_news_link", file), "r") as f:
+    #         old_links[file.split(".")[0]] = f.read().splitlines()[-30:]
+
+    # with open("user_db.json", "r") as f:
+    #     user_db = json.load(f)
+
+    print(user_db.keys())
+
     updater = Updater(TOKEN)
 
-    updater.dispatcher.add_handler(CommandHandler("hey", start))
-    updater.dispatcher.add_handler(CallbackQueryHandler(button))
-    updater.dispatcher.add_handler(
-        MessageHandler(Filters.text & ~Filters.command, add_keyword)
-    )
-    updater.dispatcher.add_handler(CommandHandler("help", help_command))
+    dp = updater.dispatcher
+    # jq = updater.job_queue
+    # job_minute = jq.run_repeating(send_links, interval=10, first=0)
+    # job_minute = jq.run_repeating(callback_minute, interval=60, first=10)
+
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("set", set_timer))
+    dp.add_handler(CommandHandler("unset", unset))
+
+    dp.add_handler(CallbackQueryHandler(button))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, add_keyword))
+    dp.add_handler(CommandHandler("help", help_command))
 
     updater.start_polling()
-
     updater.idle()
 
 
 if __name__ == "__main__":
     main()
 
-    # send_links()
     # 스케쥴러 세팅 및 작동
     # sched.add_job(send_links, "interval", minutes=10)
     # sched.start()

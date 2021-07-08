@@ -204,6 +204,16 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
     current_keyword(update, context)
 
 
+def check_alert_interval(chat_id: str, update: Update, context: CallbackContext):
+    current_jobs = context.job_queue.get_jobs_by_name(chat_id)
+    try:
+        interval = current_jobs[0].job.trigger.interval
+        return interval
+
+    except (NameError, IndexError):
+        return None
+
+
 def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     choice = query.data
@@ -221,17 +231,16 @@ def button(update: Update, context: CallbackContext) -> None:
         current_keyword(update, context)
 
     elif choice == "3":
-        current_jobs = context.job_queue.get_jobs_by_name(chat_id)
-        print(context.job_queue.get_jobs_by_name(chat_id).interval)
-        try:
-            context.bot.send_message(
-                chat_id=chat_id, text=f"{bell} 현재 설정된 알림주기: {due}분"
-            )
-        except NameError:
-            context.bot.send_message(
-                chat_id=chat_id,
-                text=f"{siren} 아직 설정된 알림이 없습니다.\n/set [설정할 알림주기(단위: 분)]",
-            )
+        interval = check_alert_interval(chat_id, update, context)
+
+        text = (
+            f"{siren} 아직 설정된 알림이 없습니다.\n``` /set 설정할 알림주기(단위: 초)```"
+            if interval is None
+            else f"{bell} 현재 설정된 알림주기 {bell}\n```{interval}```"
+        )
+
+        context.bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+
     elif choice == "4":
         # Get news immediately
         context.job_queue.run_once(send_links, 0, context=chat_id, name=str(chat_id))

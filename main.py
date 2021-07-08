@@ -32,6 +32,8 @@ good = emojize(":smiling_face_with_sunglasses:", use_aliases=True)
 siren = emojize(":police_car_light:", use_aliases=True)
 plus = emojize(":plus:", use_aliases=True)
 minus = emojize(":minus:", use_aliases=True)
+party = emojize(":party_popper:", use_aliases=True)
+
 
 # Authentication
 with open("./access_token.txt") as f:
@@ -42,8 +44,20 @@ with open("./access_token.txt") as f:
 # 기존에 보냈던 링크를 담아둘 리스트
 # archieved_txt = [file for file in os.listdir("old_news_link") if file.endswith(".txt")]
 
-with open("user_db.json", "r") as f:
-    user_db = json.load(f)
+
+def read_user_db() -> dict:
+    with open("user_db.json", "r") as f:
+        user_db = json.load(f)
+    print("user_db.json is loaded successfully")
+    return user_db
+
+
+def update_user_db(user_db: dict) -> bool:
+    with open("user_db.json", "w+") as f:
+        temp = json.dumps(user_db, ensure_ascii=False, sort_keys=True, indent=4)
+        f.write(temp)
+    print("user_db.json is written successfully!")
+
 
 # user_db = {
 #     "62786931": {"삼성전자": ["a", "b", "c"]},
@@ -52,7 +66,7 @@ with open("user_db.json", "r") as f:
 
 
 # Minimum duration for notification
-MIN_DUR = 10
+MIN_DUR = 1
 
 
 # Get chat_id to send message under each context
@@ -67,11 +81,33 @@ def get_chat_id(update, context):
     elif update.poll is not None:
         # answer in Poll
         chat_id = context.bot_data[update.poll.id]
-    return chat_id
+    return str(chat_id)
+
+
+# def check_if_newbie(chat_id: str) -> bool:
+#     """
+#     Check if the user is in user_db.json
+#     """
+#     user_db = read_user_db()
+#     print(chat_id, user_db.keys())
+#     return chat_id not in user_db.keys()
 
 
 def start(update: Update, context: CallbackContext) -> None:
     chat_id = get_chat_id(update, context)
+    user = update.message.from_user
+    user_db = read_user_db()
+
+    if chat_id not in user_db.keys():
+        user_db[chat_id] = {}
+        update_user_db(user_db)
+        context.bot.send_message(
+            chat_id,
+            f"{party} {user.first_name}님, 새로 오신 것을 환영합니다!\n사용법이 궁금하시면 /help 를 입력하세요.",
+        )
+    else:
+        context.bot.send_message(chat_id, f"{user.first_name}님, 안녕하세요!")
+
     options = [
         [
             # InlineKeyboardButton(text="키워드 편집", callback_data="1"),
@@ -101,75 +137,73 @@ def start(update: Update, context: CallbackContext) -> None:
 
 
 def current_keyword(update: Update, context: CallbackContext) -> None:
+    user_db = read_user_db()
     chat_id = get_chat_id(update, context)
-    try:
-        old_links_dict = user_db[str(chat_id)]
-    except KeyError:
-        user_db[str(chat_id)] = {}
-        print("new user added!")
 
     try:
+        old_links_dict = user_db[chat_id]
         keywords = old_links_dict.keys()
-        # keywords = user_db[str(chat_id)].keys()
         text = (
             f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!"
             if len(keywords) == 0
-            else f"{bookmark} 현재 키워드 목록: [{' | '.join(list(keywords))}]"
+            else f"{bookmark} 현재 키워드 목록\n[{' | '.join(list(keywords))}]"
         )
         context.bot.send_message(chat_id, text)
 
     except KeyError:
-        old_links_dict = {}
-        context.bot.send_message(chat_id, f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!")
+        start(update, context)
+        # context.bot.send_message(chat_id, f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!")
 
 
 def add_keyword(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
     chat_id = get_chat_id(update, context)
-    try:
-        old_links_dict = user_db[str(chat_id)]
-    except KeyError:
-        user_db[str(chat_id)] = {}
-        print("new user added!")
+    user_db = read_user_db()
+    print(user_db.keys())
+
+    old_links_dict = user_db[chat_id]
+
+    # try:
+    #         old_links_dict = user_db[chat_id]
+
+    # except KeyError:
+    #     user_db[str(chat_id)] = {}
+    #     print("new user added!")
 
     keywords = old_links_dict.keys()
-    # print(old_links_dict, keywords)
-
-    print(f"user is {user.first_name}")
-
     input_keyword = update.message.text.strip()
-    print(f"new keyword is {input_keyword}")
+    print(f"user {user.first_name}'s new keyword is {input_keyword}")
 
     if input_keyword == "초기화!":
-        user_db[str(chat_id)] = dict()
+        del user_db[chat_id]
+        unset(update, context)
+        print("ID DELETED SUCCESS") if chat_id not in user_db.keys() else print(
+            "ID DELETED FAIL"
+        )
     elif input_keyword not in keywords:
         # If there is no keyword in the list, then add keyword and its new list to store old links
         old_links_dict[input_keyword] = []
         update.message.reply_text(f"{plus} [{input_keyword}] 추가 완료!")
 
-        # # Add new keyword into old_links
-        # if input_keyword not in old_links.keys():
-        #     old_links[input_keyword] = []
     else:
         del old_links_dict[input_keyword]
         update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
 
     # Save personal keywords as a json at user_db.json
-    with open("user_db.json", "w+") as f:
-        temp = json.dumps(user_db, ensure_ascii=False, sort_keys=True, indent=4)
-        f.write(temp)
-        print("user_db.json is written successfully!")
+    # with open("user_db.json", "w+") as f:
+    #     temp = json.dumps(user_db, ensure_ascii=False, sort_keys=True, indent=4)
+    #     f.write(temp)
+    #     print("user_db.json is written successfully!")
 
+    update_user_db(user_db)
     current_keyword(update, context)
 
 
 def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     choice = query.data
-    # print(query)
 
     chat_id = get_chat_id(update, context)
-    # chat_id = update.effective_chat.id
 
     query.edit_message_text(text=f"네, 알겠습니다! {good}")
 
@@ -182,6 +216,8 @@ def button(update: Update, context: CallbackContext) -> None:
         current_keyword(update, context)
 
     elif choice == "3":
+        current_jobs = context.job_queue.get_jobs_by_name(chat_id)
+        print(context.job_queue)
         try:
             context.bot.send_message(
                 chat_id=chat_id, text=f"{bell} 현재 설정된 알림주기: {due}분"
@@ -198,14 +234,19 @@ def button(update: Update, context: CallbackContext) -> None:
 
 def send_links(context: CallbackContext) -> None:
     job = context.job
-    chat_id = job.context
-    try:
-        old_links_dict = user_db[str(chat_id)]
-    except KeyError:
-        user_db[str(chat_id)] = {}
-        print("new user added!")
+    chat_id = str(job.context)
+    user_db = read_user_db()
+    print(user_db.keys())
 
-    keywords = user_db[str(chat_id)].keys()
+    old_links_dict = user_db[chat_id]
+
+    # try:
+    #     old_links_dict = user_db[str(chat_id)]
+    # except KeyError:
+    #     user_db[str(chat_id)] = {}
+    #     print("new user added!")
+
+    keywords = user_db[chat_id].keys()
 
     for keyword in keywords:
         updater = newsUpdater(keyword)
@@ -214,26 +255,28 @@ def send_links(context: CallbackContext) -> None:
         if new_links:
             context.bot.send_message(
                 chat_id=chat_id,
-                text=f"=====\n{siren} {keyword} 관련 새로운 뉴스 {len(new_links)}건 {siren}\n=====",
+                text=f"{siren} {keyword} 관련 새로운 뉴스 {len(new_links)}건 {siren}",
             )
             for link in new_links:
                 context.bot.send_message(chat_id=chat_id, text=link)
-        else:
             context.bot.send_message(
                 chat_id=chat_id,
-                text=f"=====\n{keyword} 관련 새로운 뉴스 없음!\n=====",
+                text=f"{lightning} Quick /start {lightning}",
             )
+        else:
+            # context.bot.send_message(
+            #     chat_id=chat_id,
+            #     text=f"{keyword} 관련 새로운 뉴스 없음!",
+            # )
+            pass
 
         old_links_dict[keyword] += new_links.copy()
 
-        # with open(f"old_news_link/{keyword}.txt", "a+") as file:
-        #     for link in new_links:
-        #         file.write(f"{link}\n")
-
-    with open("user_db.json", "w+") as f:
-        temp = json.dumps(user_db, ensure_ascii=False, sort_keys=True, indent=4)
-        f.write(temp)
-        print("user_db.json is written successfully!")
+    update_user_db(user_db)
+    # context.bot.send_message(
+    #     chat_id=chat_id,
+    #     text=f"{lightning} Quick /start {lightning}",
+    # )
 
 
 def help_command(update: Update, context: CallbackContext) -> None:
@@ -298,8 +341,6 @@ def main() -> None:
 
     # with open("user_db.json", "r") as f:
     #     user_db = json.load(f)
-
-    print(user_db.keys())
 
     updater = Updater(TOKEN)
 

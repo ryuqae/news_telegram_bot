@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup as bs
 class newsUpdater:
     def __init__(self, query):
         self.query = query
-        self.timesleep = 3600
         self.url = f"https://m.search.naver.com/search.naver?where=m_news&sm=mtb_jum&query={query}"
 
     def _get_news(self):

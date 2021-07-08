@@ -204,6 +204,19 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
     current_keyword(update, context)
 
 
+<<<<<<< HEAD
+=======
+def check_alert_interval(chat_id: str, update: Update, context: CallbackContext):
+    current_jobs = context.job_queue.get_jobs_by_name(chat_id)
+    try:
+        interval = current_jobs[0].job.trigger.interval
+        return interval
+
+    except (NameError, IndexError):
+        return None
+
+
+>>>>>>> 03b33acb2d71da049e7a3ce31febd3ffa6856053
 def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     choice = query.data
@@ -221,6 +234,7 @@ def button(update: Update, context: CallbackContext) -> None:
         current_keyword(update, context)
 
     elif choice == "3":
+<<<<<<< HEAD
         current_jobs = context.job_queue.get_jobs_by_name(chat_id)
         print(context.job_queue)
         try:
@@ -232,6 +246,18 @@ def button(update: Update, context: CallbackContext) -> None:
                 chat_id=chat_id,
                 text=f"{siren} 아직 설정된 알림이 없습니다.\n/set 설정할 알림주기(단위: 초)",
             )
+=======
+        interval = check_alert_interval(chat_id, update, context)
+
+        text = (
+            f"{siren} 아직 설정된 알림이 없습니다.\n``` /set 설정할 알림주기(단위: 초)```"
+            if interval is None
+            else f"{bell} 현재 설정된 알림주기 {bell}\n```{interval}```"
+        )
+
+        context.bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+
+>>>>>>> 03b33acb2d71da049e7a3ce31febd3ffa6856053
     elif choice == "4":
         # Get news immediately
         context.job_queue.run_once(send_links, 0, context=chat_id, name=str(chat_id))
@@ -245,6 +271,15 @@ def send_links(context: CallbackContext) -> None:
 
     old_links_dict = user_db[chat_id]
 
+<<<<<<< HEAD
+=======
+    # try:
+    #     old_links_dict = user_db[str(chat_id)]
+    # except KeyError:
+    #     user_db[str(chat_id)] = {}
+    #     print("new user added!")
+
+>>>>>>> 03b33acb2d71da049e7a3ce31febd3ffa6856053
     keywords = user_db[chat_id].keys()
 
     for keyword in keywords:
@@ -281,7 +316,11 @@ def send_links(context: CallbackContext) -> None:
 def help_command(update: Update, context: CallbackContext) -> None:
     """Displays info on how to use the bot."""
     update.message.reply_text(
+<<<<<<< HEAD
         "/start : 현재 상태 확인\n\n1. 키워드 편집\n현재 목록에 없는 키워드를 입력하면 추가되고, 이미 추가된 키워드를 다시 한 번 입력하면 삭제됩니다.\n\n2. 키워드 초기화\n[초기화!]를 입력하면 저장된 키워드가 모두 삭제됩니다.\n\n3. 뉴스 알림주기 설정\n/set [설정할 알림주기(단위: 초)]\n알림 해제 : /unset"
+=======
+        "/start : 현재 상태 확인\n\n1. 키워드 편집\n현재 목록에 없는 키워드를 입력하면 추가되고, 이미 추가된 키워드를 다시 한 번 입력하면 삭제됩니다.\n\n2. 키워드 초기화\n[초기화!]를 입력하면 저장된 키워드가 모두 삭제됩니다.\n\n3. 뉴스 알림주기 설정\n/set [설정할 알림주기(단위: 분)]\n알림 해제 : /unset"
+>>>>>>> 03b33acb2d71da049e7a3ce31febd3ffa6856053
     )
 
 
@@ -303,21 +342,35 @@ def set_timer(update: Update, context: CallbackContext):
         due = int(context.args[0])
         if due < MIN_DUR:
             update.message.reply_text(
+<<<<<<< HEAD
                 f"{siren} 최소 {MIN_DUR}초 이상으로 지정해주세요.\n현재 입력값: {due}초"
+=======
+                f"{siren} 최소 {MIN_DUR}분 이상으로 지정해주세요.\n현재 입력값: {due}분"
+>>>>>>> 03b33acb2d71da049e7a3ce31febd3ffa6856053
             )
             return
         job_removed = remove_job_if_exists(str(chat_id), context)
 
         context.job_queue.run_repeating(
+<<<<<<< HEAD
             send_links, due, first=0, context=chat_id, name=str(chat_id)
         )
         text = f"{good} 뉴스 알림주기 설정 완료!\n지금부터 {due}초마다 알려드릴게요."
+=======
+            send_links, due, context=chat_id, name=str(chat_id)
+        )
+        text = f"{good} 뉴스 알림주기 설정 완료!\n지금부터 {due}분마다 알려드릴게요."
+>>>>>>> 03b33acb2d71da049e7a3ce31febd3ffa6856053
         if job_removed:
             text += "\n(기존에 설정된 값은 삭제됩니다.)"
         update.message.reply_text(text)
 
     except (IndexError, ValueError):
+<<<<<<< HEAD
         update.message.reply_text("/set 설정할 알림주기(단위: 초)")
+=======
+        update.message.reply_text("/set [설정할 알림주기(단위: 분)]")
+>>>>>>> 03b33acb2d71da049e7a3ce31febd3ffa6856053
 
 
 def unset(update: Update, context: CallbackContext) -> None:

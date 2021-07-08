@@ -71,7 +71,7 @@ def update_user_db(user_db: dict) -> bool:
 
 
 # Minimum duration for notification
-MIN_DUR = 1
+MIN_DUR = 10
 
 
 # Get chat_id to send message under each context
@@ -222,7 +222,7 @@ def button(update: Update, context: CallbackContext) -> None:
 
     elif choice == "3":
         current_jobs = context.job_queue.get_jobs_by_name(chat_id)
-        print(context.job_queue)
+        print(context.job_queue.get_jobs_by_name(chat_id).interval)
         try:
             context.bot.send_message(
                 chat_id=chat_id, text=f"{bell} 현재 설정된 알림주기: {due}분"
@@ -315,7 +315,7 @@ def set_timer(update: Update, context: CallbackContext):
         job_removed = remove_job_if_exists(str(chat_id), context)
 
         context.job_queue.run_repeating(
-            send_links, due * 60, context=chat_id, name=str(chat_id)
+            send_links, due, context=chat_id, name=str(chat_id)
         )
         text = f"{good} 뉴스 알림주기 설정 완료!\n지금부터 {due}분마다 알려드릴게요."
         if job_removed:

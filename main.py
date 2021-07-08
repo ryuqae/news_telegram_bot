@@ -89,14 +89,6 @@ def get_chat_id(update, context):
     return str(chat_id)
 
 
-# def check_if_newbie(chat_id: str) -> bool:
-#     """
-#     Check if the user is in user_db.json
-#     """
-#     user_db = read_user_db()
-#     print(chat_id, user_db.keys())
-#     return chat_id not in user_db.keys()
-
 
 def start(update: Update, context: CallbackContext) -> None:
     chat_id = get_chat_id(update, context)
@@ -254,11 +246,6 @@ def send_links(context: CallbackContext) -> None:
 
     old_links_dict = user_db[chat_id]
 
-    # try:
-    #     old_links_dict = user_db[str(chat_id)]
-    # except KeyError:
-    #     user_db[str(chat_id)] = {}
-    #     print("new user added!")
 
     keywords = user_db[chat_id].keys()
 
@@ -296,7 +283,7 @@ def send_links(context: CallbackContext) -> None:
 def help_command(update: Update, context: CallbackContext) -> None:
     """Displays info on how to use the bot."""
     update.message.reply_text(
-        "/start : 현재 상태 확인\n\n1. 키워드 편집\n현재 목록에 없는 키워드를 입력하면 추가되고, 이미 추가된 키워드를 다시 한 번 입력하면 삭제됩니다.\n\n2. 키워드 초기화\n[초기화!]를 입력하면 저장된 키워드가 모두 삭제됩니다.\n\n3. 뉴스 알림주기 설정\n/set [설정할 알림주기(단위: 분)]\n알림 해제 : /unset"
+        "/start : 현재 상태 확인\n\n1. 키워드 편집\n현재 목록에 없는 키워드를 입력하면 추가되고, 이미 추가된 키워드를 다시 한 번 입력하면 삭제됩니다.\n\n2. 키워드 초기화\n[초기화!]를 입력하면 저장된 키워드가 모두 삭제됩니다.\n\n3. 뉴스 알림주기 설정\n/set [설정할 알림주기(단위: 초)]\n알림 해제 : /unset"
     )
 
 
@@ -318,21 +305,22 @@ def set_timer(update: Update, context: CallbackContext):
         due = int(context.args[0])
         if due < MIN_DUR:
             update.message.reply_text(
-                f"{siren} 최소 {MIN_DUR}분 이상으로 지정해주세요.\n현재 입력값: {due}분"
+                f"{siren} 최소 {MIN_DUR}초 이상으로 지정해주세요.\n현재 입력값: {due}초"
             )
             return
         job_removed = remove_job_if_exists(str(chat_id), context)
 
         context.job_queue.run_repeating(
-            send_links, due, context=chat_id, name=str(chat_id)
+            send_links, due, first=0, context=chat_id, name=str(chat_id)
         )
-        text = f"{good} 뉴스 알림주기 설정 완료!\n지금부터 {due}분마다 알려드릴게요."
+        text = f"{good} 뉴스 알림주기 설정 완료!\n지금부터 {due}초마다 알려드릴게요."
         if job_removed:
             text += "\n(기존에 설정된 값은 삭제됩니다.)"
         update.message.reply_text(text)
 
     except (IndexError, ValueError):
-        update.message.reply_text("/set [설정할 알림주기(단위: 분)]")
+        update.message.reply_text("/set 설정할 알림주기(단위: 초)")
+
 
 
 def unset(update: Update, context: CallbackContext) -> None:

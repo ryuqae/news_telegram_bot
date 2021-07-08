@@ -46,8 +46,13 @@ with open("./access_token.txt") as f:
 
 
 def read_user_db() -> dict:
-    with open("user_db.json", "r") as f:
-        user_db = json.load(f)
+    try:
+        with open("user_db.json", "r") as f:
+            user_db = json.load(f)
+    except FileNotFoundError:
+        with open("user_db.json", "w") as f:
+            f.write("{}")
+        return read_user_db()
     print("user_db.json is loaded successfully")
     return user_db
 

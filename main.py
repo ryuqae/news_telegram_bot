@@ -1,3 +1,4 @@
+from urllib import parse
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -56,6 +57,11 @@ party = emojize(":party_popper:", use_aliases=True)
 with open(TOKEN_FILE) as f:
     lines = f.readlines()
     TOKEN = lines[0].strip()
+
+
+with open('search_help.txt', 'r') as f:
+    search_help = f.readlines()
+
 
 
 def read_user_db() -> dict:
@@ -269,9 +275,7 @@ def send_links(context: CallbackContext) -> None:
 
 def help_command(update: Update, context: CallbackContext) -> None:
     """Displays info on how to use the bot."""
-    update.message.reply_text(
-        "/start : 현재 상태 확인\n\n1. 키워드 편집\n현재 목록에 없는 키워드를 입력하면 추가되고, 이미 추가된 키워드를 다시 한 번 입력하면 삭제됩니다.\n\n2. 키워드 초기화\n[초기화!]를 입력하면 저장된 키워드가 모두 삭제됩니다.\n\n3. 뉴스 알림주기 설정\n/set 설정할 알림주기(단위: 초)\n/unset 알림해제"
-    )
+    update.message.reply_text(" ".join(search_help), parse_mode="Markdown")
 
 
 def remove_job_if_exists(name: str, context: CallbackContext) -> bool:

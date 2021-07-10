@@ -4,6 +4,7 @@ from telegram import (
     InlineKeyboardMarkup,
     Update,
 )
+import telegram
 from telegram.ext import (
     Filters,
     CommandHandler,
@@ -325,7 +326,9 @@ def main() -> None:
     """
     Run the bot
     """
-
+    # Reboot Message for the next version
+    # bot = telegram.Bot(token=TOKEN)
+    # bot.sendMessage(chat_id="62786931", text=f'{siren} 봇이 재시작되어 알림이 해제되었습니다. 다시 설정해 주세요!')
 
     updater = Updater(TOKEN)
 

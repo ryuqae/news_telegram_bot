@@ -14,7 +14,7 @@ from telegram.ext import (
 from emoji import emojize
 import logging
 import json
-import os
+import argparse
 from news_search import newsUpdater
 
 
@@ -23,6 +23,23 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Parsing arguments
+parser = argparse.ArgumentParser(description='Process some integers.')
+parser.add_argument("--DB_FILE", required=False, default="new_user_db.json", help="Database filename")
+parser.add_argument("--TOKEN_FILE", required=False, default="access_token_test.txt", help="Access token filename")
+parser.add_argument("--MIN_DUR", required=True, help="Minimum duration for alert")
+args=parser.parse_args()
+
+
+DB_FILE = args.DB_FILE
+TOKEN_FILE = args.TOKEN_FILE
+
+# # Minimum duration for notification
+MIN_DUR = int(args.MIN_DUR)
+
+print(f"Minimum Duration: {MIN_DUR}sec.")
+
 
 # Predefined emojis
 bookmark = emojize(":bookmark:", use_aliases=True)
@@ -36,42 +53,28 @@ party = emojize(":party_popper:", use_aliases=True)
 
 
 # Authentication
-with open("./access_token.txt") as f:
+with open(TOKEN_FILE) as f:
     lines = f.readlines()
     TOKEN = lines[0].strip()
 
 
-# 기존에 보냈던 링크를 담아둘 리스트
-# archieved_txt = [file for file in os.listdir("old_news_link") if file.endswith(".txt")]
-
-
 def read_user_db() -> dict:
     try:
-        with open("user_db.json", "r") as f:
+        with open(DB_FILE, "r") as f:
             user_db = json.load(f)
     except FileNotFoundError:
-        with open("user_db.json", "w") as f:
+        with open(DB_FILE, "w") as f:
             f.write("{}")
         return read_user_db()
-    print("user_db.json is loaded successfully")
+    print(f"{DB_FILE} is loaded successfully")
     return user_db
 
 
 def update_user_db(user_db: dict) -> bool:
-    with open("user_db.json", "w+") as f:
+    with open(DB_FILE, "w+") as f:
         temp = json.dumps(user_db, ensure_ascii=False, sort_keys=True, indent=4)
         f.write(temp)
     print("user_db.json is written successfully!")
-
-
-# user_db = {
-#     "62786931": {"삼성전자": ["a", "b", "c"]},
-#     "1852535116": {"오오": ["d", "e"], "카카오": ["f", "g"]},
-# }
-
-
-# Minimum duration for notification
-MIN_DUR = 10
 
 
 # Get chat_id to send message under each context
@@ -87,7 +90,6 @@ def get_chat_id(update, context):
         # answer in Poll
         chat_id = context.bot_data[update.poll.id]
     return str(chat_id)
-
 
 
 def start(update: Update, context: CallbackContext) -> None:
@@ -136,6 +138,7 @@ def start(update: Update, context: CallbackContext) -> None:
 def current_keyword(update: Update, context: CallbackContext) -> None:
     user_db = read_user_db()
     chat_id = get_chat_id(update, context)
+    nl = '\n'
 
     try:
         old_links_dict = user_db[chat_id]
@@ -143,7 +146,7 @@ def current_keyword(update: Update, context: CallbackContext) -> None:
         text = (
             f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!"
             if len(keywords) == 0
-            else f"{bookmark} 현재 키워드 목록\n[{' | '.join(list(keywords))}]"
+            else f"{bookmark} 현재 키워드 목록 {bookmark}\n\n{nl.join(list(keywords))}"
         )
         context.bot.send_message(chat_id, text)
 
@@ -156,16 +159,8 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
     chat_id = get_chat_id(update, context)
     user_db = read_user_db()
-    print(user_db.keys())
 
     old_links_dict = user_db[chat_id]
-
-    # try:
-    #         old_links_dict = user_db[chat_id]
-
-    # except KeyError:
-    #     user_db[str(chat_id)] = {}
-    #     print("new user added!")
 
     keywords = old_links_dict.keys()
     input_keyword = update.message.text.strip()
@@ -185,12 +180,6 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
     else:
         del old_links_dict[input_keyword]
         update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
-
-    # Save personal keywords as a json at user_db.json
-    # with open("user_db.json", "w+") as f:
-    #     temp = json.dumps(user_db, ensure_ascii=False, sort_keys=True, indent=4)
-    #     f.write(temp)
-    #     print("user_db.json is written successfully!")
 
     update_user_db(user_db)
     current_keyword(update, context)
@@ -228,7 +217,7 @@ def button(update: Update, context: CallbackContext) -> None:
         text = (
             f"{siren} 아직 설정된 알림이 없습니다.\n``` /set 설정할 알림주기(단위: 초)```"
             if interval is None
-            else f"{bell} 현재 설정된 알림주기 {bell}\n```{interval}```"
+            else f"{bell} 현재 설정된 알림주기 {bell}\n``` {interval} ```"
         )
 
         context.bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
@@ -242,48 +231,46 @@ def send_links(context: CallbackContext) -> None:
     job = context.job
     chat_id = str(job.context)
     user_db = read_user_db()
-    print(user_db.keys())
 
     old_links_dict = user_db[chat_id]
 
-
     keywords = user_db[chat_id].keys()
+    current_jobs = context.job_queue.get_jobs_by_name(chat_id)
 
     for keyword in keywords:
-        updater = newsUpdater(keyword)
+        updater = newsUpdater(query=keyword, sort=1)
         new_links = updater.get_updated_news(old_links_dict[keyword])
 
         if new_links:
             context.bot.send_message(
                 chat_id=chat_id,
-                text=f"{siren} {keyword} 관련 새로운 뉴스 {len(new_links)}건 {siren}",
+                text=f"{siren} [{keyword}] 새로운 뉴스 {len(new_links)}건 {siren}",
             )
-            for link in new_links:
-                context.bot.send_message(chat_id=chat_id, text=link)
-            context.bot.send_message(
-                chat_id=chat_id,
-                text=f"{lightning} Quick /start {lightning}",
-            )
-        else:
+            for link in new_links[::-1]:
+                context.bot.send_message(chat_id=chat_id, text=f"[{keyword}]\n{link['title']}\n{link['link']}")
             # context.bot.send_message(
             #     chat_id=chat_id,
-            #     text=f"{keyword} 관련 새로운 뉴스 없음!",
+            #     text=f"{lightning} Quick /start {lightning}",
             # )
+        elif len(current_jobs)==0:
+            # No news notification only for no job exist case.
+            context.bot.send_message(
+                chat_id=chat_id,
+                text=f"[{keyword}] 새로운 뉴스 없음!",
+            )
             pass
 
         old_links_dict[keyword] += new_links.copy()
+        # keep links only 1 day(keeptime=1)
+        old_links_dict[keyword] = updater.remove_outdated_news(old_links_dict[keyword], keeptime=1).copy()
 
     update_user_db(user_db)
-    # context.bot.send_message(
-    #     chat_id=chat_id,
-    #     text=f"{lightning} Quick /start {lightning}",
-    # )
 
 
 def help_command(update: Update, context: CallbackContext) -> None:
     """Displays info on how to use the bot."""
     update.message.reply_text(
-        "/start : 현재 상태 확인\n\n1. 키워드 편집\n현재 목록에 없는 키워드를 입력하면 추가되고, 이미 추가된 키워드를 다시 한 번 입력하면 삭제됩니다.\n\n2. 키워드 초기화\n[초기화!]를 입력하면 저장된 키워드가 모두 삭제됩니다.\n\n3. 뉴스 알림주기 설정\n/set [설정할 알림주기(단위: 초)]\n알림 해제 : /unset"
+        "/start : 현재 상태 확인\n\n1. 키워드 편집\n현재 목록에 없는 키워드를 입력하면 추가되고, 이미 추가된 키워드를 다시 한 번 입력하면 삭제됩니다.\n\n2. 키워드 초기화\n[초기화!]를 입력하면 저장된 키워드가 모두 삭제됩니다.\n\n3. 뉴스 알림주기 설정\n/set 설정할 알림주기(단위: 초)\n/unset 알림해제"
     )
 
 
@@ -311,11 +298,11 @@ def set_timer(update: Update, context: CallbackContext):
         job_removed = remove_job_if_exists(str(chat_id), context)
 
         context.job_queue.run_repeating(
-            send_links, due, first=0, context=chat_id, name=str(chat_id)
+            send_links, due, context=chat_id, name=str(chat_id)
         )
         text = f"{good} 뉴스 알림주기 설정 완료!\n지금부터 {due}초마다 알려드릴게요."
         if job_removed:
-            text += "\n(기존에 설정된 값은 삭제됩니다.)"
+            text += f"\n\n{siren} 기존에 설정된 값은 삭제됩니다."
         update.message.reply_text(text)
 
     except (IndexError, ValueError):
@@ -336,13 +323,6 @@ def main() -> None:
     Run the bot
     """
 
-    # Read the archieved old links from the text files in old_news_link directory
-    # for file in archieved_txt:
-    #     with open(os.path.join("old_news_link", file), "r") as f:
-    #         old_links[file.split(".")[0]] = f.read().splitlines()[-30:]
-
-    # with open("user_db.json", "r") as f:
-    #     user_db = json.load(f)
 
     updater = Updater(TOKEN)
 

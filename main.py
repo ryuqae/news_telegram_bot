@@ -79,7 +79,7 @@ def update_user_db(user_db: dict) -> bool:
     with open(DB_FILE, "w+") as f:
         temp = json.dumps(user_db, ensure_ascii=False, sort_keys=True, indent=4)
         f.write(temp)
-    print("user_db.json is written successfully!")
+    print(f"{DB_FILE} is written successfully!")
 
 
 # Get chat_id to send message under each context

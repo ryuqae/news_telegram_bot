@@ -1,18 +1,19 @@
 import requests
 from bs4 import BeautifulSoup as bs
 from datetime import datetime, timedelta
+from urllib import parse
 
 
 class newsUpdater:
     def __init__(self, query: str, sort: int):
-        self.query = query
+        self.query = parse.quote(query)
         self.sort = int(sort)
-        # self.url = f"https://m.search.naver.com/search.naver?where=m_news&sm=mtb_jum&query={query}"
-        # self.url = f"https://m.search.naver.com/search.naver?where=m_news&ie=utf8&sm=mns_hty&query{query}"
-        self.url = f"https://m.search.naver.com/search.naver?where=m_news&query={query}&sm=mtb_opt&sort={sort}"
-        """
-        https://m.search.naver.com/search.naver?where=m_news&query=삼성전자 +카카오&sm=mtb_opt&sort=1
-        """
+        self.ds = None
+        self.de = None
+        self.where= 'm_news'
+
+        self.url = f"https://m.search.naver.com/search.naver?where=m_news&query={self.query}&sm=mtb_opt&sort={self.sort}&qdt=1&pd=4"
+
 
     def _get_news(self):
         result = requests.get(self.url)
@@ -20,8 +21,12 @@ class newsUpdater:
         soup = bs(result_html, "html.parser")
 
         search_result = soup.select_one("#news_result_list")
-        news_links = search_result.select(".bx > .news_wrap > a")
-        return news_links
+        try:
+            news_links = search_result.select(".bx > .news_wrap > a")
+            return news_links
+
+        except AttributeError:
+            return []
 
     def remove_outdated_news(self, links: list, keeptime:int) -> None:
         now = datetime.now()
@@ -39,7 +44,7 @@ class newsUpdater:
     def get_updated_news(self, old_links: list):
         new_links = []
         links = self._get_news()
-
+        
         # Handling the database based on the time newslinks were added
         now = datetime.now()
         old_urls = [old_link['link'] for old_link in old_links]
@@ -59,7 +64,7 @@ class newsUpdater:
 
 if __name__ == "__main__":
     import time
-    a = newsUpdater(query="카카오 삼성전자", sort=1)
+    a = newsUpdater(query="오뚜기 +진라면", sort=1)
     news_ = a.get_updated_news([])
     # print(news_)
 
@@ -67,7 +72,7 @@ if __name__ == "__main__":
     for line in news_:
         print(line)
 
-    time.sleep(10)
+    time.sleep(1)
     newer = a.get_updated_news(news_)
 
     for line in newer:

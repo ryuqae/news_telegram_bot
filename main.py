@@ -63,7 +63,6 @@ with open('search_help.txt', 'r') as f:
     search_help = f.readlines()
 
 
-
 def read_user_db() -> dict:
     try:
         with open(DB_FILE, "r") as f:

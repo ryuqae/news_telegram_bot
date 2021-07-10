@@ -35,8 +35,14 @@ class newsUpdater:
         now = datetime.now()
         outdated = timedelta(days=keeptime)
         only_up_to_date = [link for link in links if (now - datetime.strptime(link["added"], "%Y-%m-%d %H:%M:%S") < outdated)]
+
+        # Logging the oldest articles in each keyword
         time_passed = [now - datetime.strptime(link["added"], "%Y-%m-%d %H:%M:%S") for link in links]
-        print(f"the oldest news: {max(time_passed)}")
+
+        try:
+            print(f"the oldest news: {max(time_passed)}")
+        except ValueError:
+            print(f"Nothing remained: {len(time_passed)} should be equal to zero.")
 
         return only_up_to_date
 

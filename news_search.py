@@ -6,11 +6,14 @@ from urllib import parse
 
 class newsUpdater:
     def __init__(self, query: str, sort: int):
+        '''
+        query : should be encoded
+        sort : 0 - related, 1 - recent
+        qdt : 0- general search, 1 - detail search enabled
+        pd : 4 - within a day
+        '''
         self.query = parse.quote(query)
         self.sort = int(sort)
-        self.ds = None
-        self.de = None
-        self.where= 'm_news'
 
         self.url = f"https://m.search.naver.com/search.naver?where=m_news&query={self.query}&sm=mtb_opt&sort={self.sort}&qdt=1&pd=4"
 
@@ -35,10 +38,6 @@ class newsUpdater:
         time_passed = [now - datetime.strptime(link["added"], "%Y-%m-%d %H:%M:%S") for link in links]
         print(f"the oldest news: {max(time_passed)}")
 
-
-        # print(f"only_up_to_date: {len(only_up_to_date)}")
-        # print("outdated news were removed.")
-
         return only_up_to_date
 
     def get_updated_news(self, old_links: list):
@@ -55,11 +54,7 @@ class newsUpdater:
             if link["href"] not in old_urls:
                 new_links.append({"title": title, "link": link["href"], "added": now.strftime(format="%Y-%m-%d %H:%M:%S")})
 
-        # new_links = self._remove_outdated_news(new_links, now)
-
         return new_links
-
-
 
 
 if __name__ == "__main__":

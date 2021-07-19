@@ -26,11 +26,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Parsing arguments
-parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument("--DB_FILE", required=False, default="new_user_db.json", help="Database filename")
-parser.add_argument("--TOKEN_FILE", required=False, default="access_token_test.txt", help="Access token filename")
+parser = argparse.ArgumentParser(description="Process some integers.")
+parser.add_argument(
+    "--DB_FILE", required=False, default="new_user_db.json", help="Database filename"
+)
+parser.add_argument(
+    "--TOKEN_FILE",
+    required=False,
+    default="access_token_test.txt",
+    help="Access token filename",
+)
 parser.add_argument("--MIN_DUR", required=True, help="Minimum duration for alert")
-args=parser.parse_args()
+args = parser.parse_args()
 
 
 DB_FILE = args.DB_FILE
@@ -59,7 +66,7 @@ with open(TOKEN_FILE) as f:
     TOKEN = lines[0].strip()
 
 
-with open('search_help.txt', 'r') as f:
+with open("search_help.txt", "r") as f:
     search_help = f.readlines()
 
 
@@ -143,7 +150,7 @@ def start(update: Update, context: CallbackContext) -> None:
 def current_keyword(update: Update, context: CallbackContext) -> None:
     user_db = read_user_db()
     chat_id = get_chat_id(update, context)
-    nl = '\n'
+    nl = "\n"
 
     try:
         old_links_dict = user_db[chat_id]
@@ -252,12 +259,15 @@ def send_links(context: CallbackContext) -> None:
                 text=f"{siren} [{keyword}] 새로운 뉴스 {len(new_links)}건 {siren}",
             )
             for link in new_links[::-1]:
-                context.bot.send_message(chat_id=chat_id, text=f"[{keyword}]\n{link['title']}\n{link['link']}")
+                context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"[{keyword}]\n{link['title']}\n{link['link']}",
+                )
             # context.bot.send_message(
             #     chat_id=chat_id,
             #     text=f"{lightning} Quick /start {lightning}",
             # )
-        elif len(current_jobs)==0:
+        elif len(current_jobs) == 0:
             # No news notification only for no job exist case.
             context.bot.send_message(
                 chat_id=chat_id,
@@ -267,7 +277,9 @@ def send_links(context: CallbackContext) -> None:
 
         old_links_dict[keyword] += new_links.copy()
         # keep links only 1 day(keeptime=1)
-        old_links_dict[keyword] = updater.remove_outdated_news(old_links_dict[keyword], keeptime=1).copy()
+        old_links_dict[keyword] = updater.remove_outdated_news(
+            old_links_dict[keyword], keeptime=1
+        ).copy()
 
     update_user_db(user_db)
 
@@ -312,7 +324,6 @@ def set_timer(update: Update, context: CallbackContext):
         update.message.reply_text("/set 설정할 알림주기(단위: 초)")
 
 
-
 def unset(update: Update, context: CallbackContext) -> None:
     """Remove the job if the user changed their mind."""
     chat_id = update.message.chat_id
@@ -325,7 +336,6 @@ def main() -> None:
     """
     Run the bot
     """
-
 
     updater = Updater(TOKEN)
 

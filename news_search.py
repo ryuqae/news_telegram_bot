@@ -51,14 +51,17 @@ class newsUpdater:
         links = self._get_news()
         
         # Handling the database based on the time newslinks were added
-        now = datetime.now()
-        old_urls = [old_link['link'] for old_link in old_links]
+        # now = datetime.now()
+        # print(old_links)
+        # old_urls = [old_link['link'] for old_link in old_links]
 
         for link in links:
             title = str(link.get_text()).strip()
             # Not appending the duplicated links: check based on the link
-            if link["href"] not in old_urls:
-                new_links.append({"title": title, "link": link["href"], "added": now.strftime(format="%Y-%m-%d %H:%M:%S")})
+            if link["href"] not in old_links:
+                new_links.append({"title": title, "link": link["href"]})
+                    #  "added": now.strftime(format="%Y-%m-%d %H:%M:%S")})
+                # new_links.extend((title, link["href"]))
 
         return new_links
 

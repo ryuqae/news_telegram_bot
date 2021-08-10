@@ -1,5 +1,6 @@
 from sqlite3 import dbapi2
 from urllib import parse
+import telegram
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -211,7 +212,7 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
         # old_links_dict[input_keyword] = []
         result = handler.add_keyword(chat_id, input_keyword)
         if result:
-            update.message.reply_text(f"{plus} [{input_keyword}] 추가 완료!")
+            update.message.reply_text(f"{plus} [{input_keyword}] 추가/삭제 완료!")
         else:
             update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
         current_keyword(update, context)
@@ -275,7 +276,9 @@ def send_links(context: CallbackContext) -> None:
 
     for keyword in keywords:
         updater = newsUpdater(query=keyword, sort=1)
-        new_links = updater.get_updated_news(handler.get_links(chat_id, keyword))
+        old_links = handler.get_links(chat_id, keyword)
+        old_links = [link[2] for link in old_links]
+        new_links = updater.get_updated_news(old_links=old_links)
 
         if new_links:
             context.bot.send_message(
@@ -287,10 +290,12 @@ def send_links(context: CallbackContext) -> None:
                     chat_id=chat_id,
                     text=f"[{keyword}]\n{link['title']}\n{link['link']}",
                 )
-            # context.bot.send_message(
-            #     chat_id=chat_id,
-            #     text=f"{lightning} Quick /start {lightning}",
-            # )
+            handler.add_links(chat_id, keyword, new_links)
+
+            context.bot.send_message(
+                chat_id=chat_id,
+                text=f"{lightning} Quick /start {lightning}",
+            )
         elif len(current_jobs) == 0:
             # No news notification only for no job exist case.
             context.bot.send_message(
@@ -299,15 +304,8 @@ def send_links(context: CallbackContext) -> None:
             )
             pass
 
-        handler.add_links(chat_id, keyword, new_links)
+        handler.remove_outdated_news(id=chat_id, keyword=keyword, keeptime=1)
 
-        # old_links_dict[keyword] += new_links.copy()
-        # # keep links only 1 day(keeptime=1)
-        # old_links_dict[keyword] = updater.remove_outdated_news(
-        #     old_links_dict[keyword], keeptime=1
-        # ).copy()
-
-    # update_user_db(user_db)
 
 
 def help_command(update: Update, context: CallbackContext) -> None:
@@ -363,8 +361,10 @@ def main() -> None:
     Run the bot
     """
     # Reboot Message for the next version
-    # bot = telegram.Bot(token=TOKEN)
-    # bot.sendMessage(chat_id="62786931", text=f'{siren} 봇이 재시작되어 알림이 해제되었습니다. 다시 설정해 주세요!')
+    bot = telegram.Bot(token=TOKEN)
+    all_active_users = [user[0] for user in handler.get_user()]
+    for user_id in all_active_users:
+        bot.sendMessage(chat_id=user_id, text=f'{siren} 봇이 재시작되어 알림이 해제되었습니다. 다시 설정해 주세요!')
 
     updater = Updater(TOKEN)
 

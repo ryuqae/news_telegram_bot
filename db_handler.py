@@ -117,19 +117,21 @@ class Handler:
         INSERT INTO {self.article_table}({self.user_id}, {self.keyword}, {self.url}, {self.title}, {self.added_timestamp}, {self.active}) VALUES(?,?,?,?,?,?)
         ON CONFLICT DO UPDATE SET {self.active} = 1
         """
-        data = [(id, keyword, article["link"], article["title"], datetime.now(), 1) for article in articles]
+        data = [
+            (id, keyword, article["link"], article["title"], datetime.now(), 1)
+            for article in articles
+        ]
         # print("ADD LINK DATA", data)
 
         return self._update(sql, data)
 
-    def remove_outdated_news(self, id: int, keyword: str, keeptime:int) -> None:
+    def remove_outdated_news(self, id: int, keyword: str, keeptime: int) -> None:
         outdated = datetime.now() - timedelta(days=keeptime)
 
         sql = f"""
         UPDATE {self.article_table} SET {self.active} = -1 WHERE {self.user_id} = {id} AND {self.keyword} = '{keyword}' AND {self.added_timestamp} < '{outdated}'
         """
         return self._update(sql)
-
 
 
 if __name__ == "__main__":
@@ -146,7 +148,6 @@ if __name__ == "__main__":
     handler.remove_outdated_news(62786931, "삼성전자", 60)
 
     # print(handler.get_links(3239, "삼성전자"))
-
 
     # print(add_link)
     # print(f"키워드 목록 {keywords}")

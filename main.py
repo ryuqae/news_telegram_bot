@@ -26,7 +26,7 @@ import sqlite3
 
 # Logger
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.ERROR, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -77,18 +77,6 @@ with open("search_help.txt", "r") as f:
 
 # Connect to the given db file
 handler = Handler(DB_FILE)
-
-
-# def read_user_db() -> dict:
-#     try:
-#         with open(DB_FILE, "r") as f:
-#             user_db = json.load(f)
-#     except FileNotFoundError:
-#         with open(DB_FILE, "w") as f:
-#             f.write("{}")
-#         return read_user_db()
-#     print(f"{DB_FILE} is loaded successfully")
-#     return user_db
 
 
 def update_user_db(user_db: dict) -> bool:
@@ -160,21 +148,11 @@ def start(update: Update, context: CallbackContext) -> None:
 
 
 def current_keyword(update: Update, context: CallbackContext) -> None:
-    # user_db = read_user_db()
     chat_id = get_chat_id(update, context)
     nl = "\n"
 
-    print(DB_FILE)
-
-    # with sqlite3.connect(DB_FILE) as conn:
-    #     cursor = conn.cursor()
-    #     cursor.execute("SELECT * FROM keywords")
-    #     print(cursor.fetchall())
-
     keywords = handler.get_keyword(chat_id)
     # [('나나나', '2021-08-10 16:36:38.117548'), ('삼성물산', '2021-08-10 16:29:58.278979'), ('삼성전자', '2021-08-10 16:29:26.077459'), ('옹', '2021-08-10 16:36:36.157206'), ('자반고등어', '2021-08-10 16:36:40.397227'), ('카카오', '2021-08-10 16:29:45.387042')]
-
-    print(keywords)
 
     text = (
         f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!"
@@ -182,12 +160,6 @@ def current_keyword(update: Update, context: CallbackContext) -> None:
         else f"{bookmark} 현재 키워드 목록 {bookmark}\n\n{nl.join([kw[0] for kw in keywords])}"
     )
     context.bot.send_message(chat_id, text)
-
-    # try:
-
-    # except KeyError:
-    #     start(update, context)
-    #     # context.bot.send_message(chat_id, f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!")
 
 
 def add_keyword(update: Update, context: CallbackContext) -> None:
@@ -209,11 +181,11 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
 
     elif input_keyword is not None:
         # If there is no keyword in the list, then add keyword and its new list to store old links
-        # old_links_dict[input_keyword] = []
         result = handler.add_keyword(chat_id, input_keyword)
         if result:
             update.message.reply_text(f"{plus} [{input_keyword}] 추가/삭제 완료!")
         else:
+            # Deleted message doesn't work. should get current status from the query.
             update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
         current_keyword(update, context)
 
@@ -307,7 +279,6 @@ def send_links(context: CallbackContext) -> None:
         handler.remove_outdated_news(id=chat_id, keyword=keyword, keeptime=1)
 
 
-
 def help_command(update: Update, context: CallbackContext) -> None:
     """Displays info on how to use the bot."""
     update.message.reply_text(" ".join(search_help), parse_mode="Markdown")
@@ -364,7 +335,9 @@ def main() -> None:
     bot = telegram.Bot(token=TOKEN)
     all_active_users = [user[0] for user in handler.get_user()]
     for user_id in all_active_users:
-        bot.sendMessage(chat_id=user_id, text=f'{siren} 봇이 재시작되어 알림이 해제되었습니다. 다시 설정해 주세요!')
+        bot.sendMessage(
+            chat_id=user_id, text=f"{siren} 봇이 재시작되어 알림이 해제되었습니다. 다시 설정해 주세요!"
+        )
 
     updater = Updater(TOKEN)
 

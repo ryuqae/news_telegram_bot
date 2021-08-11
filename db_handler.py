@@ -74,7 +74,7 @@ class Handler:
     def add_user(self, id: int, name: str) -> bool:
         sql = f"""
             INSERT INTO {self.user_table}({self.user_id}, {self.username}, {self.added_timestamp}, {self.active}) VALUES(?,?,?,?)
-            ON CONFLICT DO UPDATE SET {self.active} = {self.active} * -1
+            ON CONFLICT({self.user_id}) DO UPDATE SET {self.active} = {self.active} * -1
             """
 
         row = [(id, name, datetime.now(), 1)]
@@ -84,7 +84,7 @@ class Handler:
     def add_keyword(self, id: int, keyword: str):
         sql = f"""
         INSERT INTO {self.keyword_table}({self.user_id}, {self.keyword}, {self.added_timestamp}, {self.active}) VALUES(?,?,?,?)
-        ON CONFLICT DO UPDATE SET {self.active} = {self.active} * -1
+        ON CONFLICT({self.user_id}, {self.keyword}) DO UPDATE SET {self.active} = {self.active} * -1
         """
         row = [(id, keyword, datetime.now(), True)]
 
@@ -115,7 +115,7 @@ class Handler:
     def add_links(self, id: int, keyword: str, articles: list) -> bool:
         sql = f"""
         INSERT INTO {self.article_table}({self.user_id}, {self.keyword}, {self.url}, {self.title}, {self.added_timestamp}, {self.active}) VALUES(?,?,?,?,?,?)
-        ON CONFLICT DO UPDATE SET {self.active} = 1
+        ON CONFLICT({self.user_id}, {self.keyword}, {self.url}) DO UPDATE SET {self.active} = 1
         """
         data = [
             (id, keyword, article["link"], article["title"], datetime.now(), 1)

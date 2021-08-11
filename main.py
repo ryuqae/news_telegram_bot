@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 # Parsing arguments
 parser = argparse.ArgumentParser(description="Process some integers.")
 parser.add_argument(
-    "--DB_FILE", required=False, default="new_user_db.json", help="Database filename"
+    "--DB_FILE", required=False, default="new6.db", help="Database filename"
 )
 parser.add_argument(
     "--TOKEN_FILE",

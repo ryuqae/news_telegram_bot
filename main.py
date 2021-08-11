@@ -276,6 +276,7 @@ def send_links(context: CallbackContext) -> None:
             )
             pass
 
+        # As soon as the new links were sent, check outdated articles and deactivate them
         handler.remove_outdated_news(id=chat_id, keyword=keyword, keeptime=1)
 
 

@@ -19,10 +19,11 @@ class Handler:
             self.title,
             self.added_timestamp,
             self.active,
-        ) = "uid name query url title added_timestamp active".split()
+            self.mode
+        ) = "uid name query url title added_timestamp active mode".split()
 
         user_init = f"""CREATE TABLE IF NOT EXISTS {self.user_table} ({self.user_id} INTEGER NOT NULL, {self.username} TEXT, {self.added_timestamp} TEXT, {self.active} INTEGER, PRIMARY KEY({self.user_id}))"""
-        keyword_init = f"""CREATE TABLE IF NOT EXISTS {self.keyword_table} ({self.user_id} INTEGER NOT NULL, {self.keyword} TEXT, {self.added_timestamp} TEXT, {self.active} INTEGER, UNIQUE({self.user_id}, {self.keyword}))"""
+        keyword_init = f"""CREATE TABLE IF NOT EXISTS {self.keyword_table} ({self.user_id} INTEGER NOT NULL, {self.keyword} TEXT, {self.added_timestamp} TEXT, {self.active} INTEGER, {self.mode} INTEGER, UNIQUE({self.user_id}, {self.keyword}, {self.mode}))"""
         article_init = f"""CREATE TABLE IF NOT EXISTS {self.article_table} ({self.user_id} INTEGER NOT NULL, {self.keyword} TEXT, {self.url} TEXT NOT NULL, {self.title} TEXT, {self.added_timestamp} TEXT, {self.active} INTEGER, UNIQUE({self.user_id}, {self.keyword}, {self.url}))"""
 
         with sqlite3.connect(db_file) as conn:
@@ -67,7 +68,7 @@ class Handler:
             """
         else:
             sql = f"""
-                SELECT * from {self.user_table} WHERE {self.user_id}=={id} AND {self.active}=1
+                SELECT * from {self.user_table} WHERE {self.user_id}={id} AND {self.active}=1
                 """
         return self._get(sql)
 
@@ -81,12 +82,12 @@ class Handler:
 
         return self._update(sql, row)
 
-    def add_keyword(self, id: int, keyword: str):
+    def add_keyword(self, id: int, keyword: str, mode:int):
         sql = f"""
-        INSERT INTO {self.keyword_table}({self.user_id}, {self.keyword}, {self.added_timestamp}, {self.active}) VALUES(?,?,?,?)
-        ON CONFLICT({self.user_id}, {self.keyword}) DO UPDATE SET {self.active} = {self.active} * -1
+        INSERT INTO {self.keyword_table}({self.user_id}, {self.keyword}, {self.added_timestamp}, {self.active}, {self.mode}) VALUES(?,?,?,?,?)
+        ON CONFLICT({self.user_id}, {self.keyword}, {self.mode}) DO UPDATE SET {self.active} = {self.active} * -1
         """
-        row = [(id, keyword, datetime.now(), True)]
+        row = [(id, keyword, datetime.now(), True, mode)]
 
         return self._update(sql, row)
 
@@ -102,7 +103,7 @@ class Handler:
 
     def get_keyword(self, id: int):
         sql = f"""
-        SELECT {self.keyword}, {self.added_timestamp} FROM {self.keyword_table} WHERE {self.user_id}={id} AND {self.active}=1
+        SELECT {self.keyword}, {self.mode}, {self.added_timestamp} FROM {self.keyword_table} WHERE {self.user_id}={id} AND {self.active}=1
         """
         return self._get(sql)
 

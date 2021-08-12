@@ -79,13 +79,6 @@ with open("search_help.txt", "r") as f:
 handler = Handler(DB_FILE)
 
 
-def update_user_db(user_db: dict) -> bool:
-    with open(DB_FILE, "w+") as f:
-        temp = json.dumps(user_db, ensure_ascii=False, sort_keys=True, indent=4)
-        f.write(temp)
-    print("user_db.json is written successfully!")
-
-
 # Get chat_id to send message under each context
 def get_chat_id(update, context):
     chat_id = -1
@@ -103,11 +96,9 @@ def get_chat_id(update, context):
 
 def start(update: Update, context: CallbackContext) -> None:
     chat_id = get_chat_id(update, context)
-    # print(chat_id)
     user_db = handler.get_user(chat_id)
 
     user = update.message.from_user
-    # user_db = read_user_db()
 
     if len(user_db) == 0:
         result = handler.add_user(chat_id, user.first_name)
@@ -152,12 +143,12 @@ def current_keyword(update: Update, context: CallbackContext) -> None:
     nl = "\n"
 
     keywords = handler.get_keyword(chat_id)
-    # [('나나나', '2021-08-10 16:36:38.117548'), ('삼성물산', '2021-08-10 16:29:58.278979'), ('삼성전자', '2021-08-10 16:29:26.077459'), ('옹', '2021-08-10 16:36:36.157206'), ('자반고등어', '2021-08-10 16:36:40.397227'), ('카카오', '2021-08-10 16:29:45.387042')]
+    # [('나나나', 1, '2021-08-10 16:36:38.117548'), ('삼성물산', 0, '2021-08-10 16:29:58.278979'), ('삼성전자', '2021-08-10 16:29:26.077459'), ('옹', '2021-08-10 16:36:36.157206'), ('자반고등어', '2021-08-10 16:36:40.397227'), ('카카오', '2021-08-10 16:29:45.387042')]
 
     text = (
         f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!"
         if len(keywords) == 0
-        else f"{bookmark} 현재 키워드 목록 {bookmark}\n\n{nl.join([kw[0] for kw in keywords])}"
+        else f"{bookmark} 현재 키워드 목록 {bookmark}\n\n{nl.join([kw[0]+'**' if kw[1]==1 else kw[0] for kw in keywords])}"
     )
     context.bot.send_message(chat_id, text)
 
@@ -178,10 +169,17 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
             else f"다음에 다시 시도해주세요."
         )
         update.message.reply_text(text)
+    
+    elif input_keyword.endswith("**"):
+        input_keyword=input_keyword.strip("**")
+        handler.add_keyword(id=chat_id, keyword=input_keyword, mode=1)
+        update.message.reply_text(f"{plus} 제목 포함 [{input_keyword}] 추가/삭제 완료!")
+        current_keyword(update, context)
+
 
     elif input_keyword is not None:
         # If there is no keyword in the list, then add keyword and its new list to store old links
-        result = handler.add_keyword(chat_id, input_keyword)
+        result = handler.add_keyword(id=chat_id, keyword=input_keyword, mode=0)
         if result:
             update.message.reply_text(f"{plus} [{input_keyword}] 추가/삭제 완료!")
         else:
@@ -243,26 +241,39 @@ def send_links(context: CallbackContext) -> None:
     chat_id = str(job.context)
 
     keywords = handler.get_keyword(chat_id)
-    keywords = [kw[0] for kw in keywords]
+    # keywords = [kw[0] for kw in keywords]
     current_jobs = context.job_queue.get_jobs_by_name(chat_id)
 
     for keyword in keywords:
-        updater = newsUpdater(query=keyword, sort=1)
-        old_links = handler.get_links(chat_id, keyword)
+        kw, mode, _ = keyword
+        updater = newsUpdater(query=kw, sort=1)
+        old_links = handler.get_links(chat_id, kw)
         old_links = [link[2] for link in old_links]
         new_links = updater.get_updated_news(old_links=old_links)
 
+        if mode==1:
+            print(f"{kw} 제목만!")
+            # print(f"before {new_links}")
+            new_links = [link for link in new_links if kw in link['title']]
+            # print(f"after {new_links}")
+
+        else:
+            print(f"{kw} 전체 다!")
+            pass
+
+
         if new_links:
+
             context.bot.send_message(
                 chat_id=chat_id,
-                text=f"{siren} [{keyword}] 새로운 뉴스 {len(new_links)}건 {siren}",
+                text=f"{siren} [{kw}] 새로운 뉴스 {len(new_links)}건 {siren}",
             )
             for link in new_links[::-1]:
                 context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"[{keyword}]\n{link['title']}\n{link['link']}",
+                    text=f"[{kw}]\n{link['title']}\n{link['link']}",
                 )
-            handler.add_links(chat_id, keyword, new_links)
+            handler.add_links(chat_id, kw, new_links)
 
             context.bot.send_message(
                 chat_id=chat_id,
@@ -272,12 +283,12 @@ def send_links(context: CallbackContext) -> None:
             # No news notification only for no job exist case.
             context.bot.send_message(
                 chat_id=chat_id,
-                text=f"[{keyword}] 새로운 뉴스 없음!",
+                text=f"[{kw}] 새로운 뉴스 없음!",
             )
             pass
 
         # As soon as the new links were sent, check outdated articles and deactivate them
-        handler.remove_outdated_news(id=chat_id, keyword=keyword, keeptime=1)
+        handler.remove_outdated_news(id=chat_id, keyword=kw, keeptime=1)
 
 
 def help_command(update: Update, context: CallbackContext) -> None:

@@ -22,6 +22,7 @@ from news_search import newsUpdater
 
 from db_handler import Handler
 import sqlite3
+import re
 
 
 # Logger
@@ -173,7 +174,7 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
     elif input_keyword.endswith("**"):
         input_keyword=input_keyword.strip("**")
         handler.add_keyword(id=chat_id, keyword=input_keyword, mode=1)
-        update.message.reply_text(f"{plus} 제목 포함 [{input_keyword}] 추가/삭제 완료!")
+        update.message.reply_text(f"[제목필터]\"{input_keyword}\" 추가/삭제 완료!")
         current_keyword(update, context)
 
 
@@ -181,7 +182,7 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
         # If there is no keyword in the list, then add keyword and its new list to store old links
         result = handler.add_keyword(id=chat_id, keyword=input_keyword, mode=0)
         if result:
-            update.message.reply_text(f"{plus} [{input_keyword}] 추가/삭제 완료!")
+            update.message.reply_text(f"[전체]\"{input_keyword}\" 추가/삭제 완료!")
         else:
             # Deleted message doesn't work. should get current status from the query.
             update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
@@ -252,13 +253,15 @@ def send_links(context: CallbackContext) -> None:
         new_links = updater.get_updated_news(old_links=old_links)
 
         if mode==1:
-            print(f"{kw} 제목만!")
-            # print(f"before {new_links}")
-            new_links = [link for link in new_links if kw in link['title']]
-            # print(f"after {new_links}")
+            # If the keyword has a title filter. -> check if the title is containing any of the keyword(s). 
+            print(f"before {new_links}")
+            only_words = re.sub(r"\W+", " ", kw).split()
+            print("only_words", only_words)
+            check_ = lambda title: any(word in title for word in only_words)
+            new_links = [link for link in new_links if check_(link['title'])]
+            print(f"after {new_links}")
 
         else:
-            print(f"{kw} 전체 다!")
             pass
 
 

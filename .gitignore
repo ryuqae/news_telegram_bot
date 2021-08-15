@@ -1,6 +1,7 @@
 __pycache__/
 auth/
 database/
+.vscode/
 *.out
 *.sh
 *.pid

@@ -1,0 +1,7 @@
+__pycache__/
+auth/
+database/
+*.out
+*.sh
+*.pid
+*.log

@@ -39,16 +39,16 @@ class newsUpdater:
             if (now - datetime.strptime(link["added"], "%Y-%m-%d %H:%M:%S") < outdated)
         ]
 
-        # Logging the oldest articles in each keyword
-        time_passed = [
-            now - datetime.strptime(link["added"], "%Y-%m-%d %H:%M:%S")
-            for link in links
-        ]
+        # # Logging the oldest articles in each keyword
+        # time_passed = [
+        #     now - datetime.strptime(link["added"], "%Y-%m-%d %H:%M:%S")
+        #     for link in links
+        # ]
 
-        try:
-            print(f"the oldest news: {max(time_passed)}")
-        except ValueError:
-            print(f"Nothing remained: {len(time_passed)} should be equal to zero.")
+        # try:
+        #     print(f"the oldest news: {max(time_passed)}")
+        # except ValueError:
+        #     print(f"Nothing remained: {len(time_passed)} should be equal to zero.")
 
         return only_up_to_date
 
@@ -58,7 +58,6 @@ class newsUpdater:
 
         # Handling the database based on the time newslinks were added
         # now = datetime.now()
-        # print(old_links)
         # old_urls = [old_link['link'] for old_link in old_links]
 
         for link in links:

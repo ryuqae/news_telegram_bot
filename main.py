@@ -159,7 +159,7 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
     chat_id = get_chat_id(update, context)
 
     input_keyword = update.message.text.strip()
-    print(f"user {user.first_name}'s new keyword is {input_keyword}")
+    # print(f"user {user.first_name}'s new keyword is {input_keyword}")
 
     if input_keyword == "초기화!":
         unset(update, context)
@@ -170,19 +170,18 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
             else f"다음에 다시 시도해주세요."
         )
         update.message.reply_text(text)
-    
-    elif input_keyword.endswith("**"):
-        input_keyword=input_keyword.strip("**")
-        handler.add_keyword(id=chat_id, keyword=input_keyword, mode=1)
-        update.message.reply_text(f"[제목필터]\"{input_keyword}\" 추가/삭제 완료!")
-        current_keyword(update, context)
 
+    elif input_keyword.endswith("**"):
+        input_keyword = input_keyword.strip("**")
+        handler.add_keyword(id=chat_id, keyword=input_keyword, mode=1)
+        update.message.reply_text(f'[제목필터]"{input_keyword}" 추가/삭제 완료!')
+        current_keyword(update, context)
 
     elif input_keyword is not None:
         # If there is no keyword in the list, then add keyword and its new list to store old links
         result = handler.add_keyword(id=chat_id, keyword=input_keyword, mode=0)
         if result:
-            update.message.reply_text(f"[전체]\"{input_keyword}\" 추가/삭제 완료!")
+            update.message.reply_text(f'[전체]"{input_keyword}" 추가/삭제 완료!')
         else:
             # Deleted message doesn't work. should get current status from the query.
             update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
@@ -252,18 +251,14 @@ def send_links(context: CallbackContext) -> None:
         old_links = [link[2] for link in old_links]
         new_links = updater.get_updated_news(old_links=old_links)
 
-        if mode==1:
-            # If the keyword has a title filter. -> check if the title is containing any of the keyword(s). 
-            print(f"before {new_links}")
+        if mode == 1:
+            # If the keyword has a title filter. -> check if the title is containing any of the keyword(s).
             only_words = re.sub(r"\W+", " ", kw).split()
-            print("only_words", only_words)
             check_ = lambda title: any(word in title for word in only_words)
-            new_links = [link for link in new_links if check_(link['title'])]
-            print(f"after {new_links}")
+            new_links = [link for link in new_links if check_(link["title"])]
 
         else:
             pass
-
 
         if new_links:
 

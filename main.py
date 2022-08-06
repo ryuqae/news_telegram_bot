@@ -113,7 +113,7 @@ def start(update: Update, context: CallbackContext) -> None:
 
     options = [
         [
-            # InlineKeyboardButton(text="키워드 편집", callback_data="1"),
+            # InlineKeyboardButton(text="키워드 삭제", callback_data="1"),
             InlineKeyboardButton(
                 text=f"{bookmark} 현재 키워드 목록 {bookmark}", callback_data="2"
             ),
@@ -139,19 +139,22 @@ def start(update: Update, context: CallbackContext) -> None:
     )
 
 
-def current_keyword(update: Update, context: CallbackContext) -> None:
+def current_keyword(update: Update, context: CallbackContext) -> list:
     chat_id = get_chat_id(update, context)
     nl = "\n"
 
     keywords = handler.get_keyword(chat_id)
     # [('나나나', 1, '2021-08-10 16:36:38.117548'), ('삼성물산', 0, '2021-08-10 16:29:58.278979'), ('삼성전자', '2021-08-10 16:29:26.077459'), ('옹', '2021-08-10 16:36:36.157206'), ('자반고등어', '2021-08-10 16:36:40.397227'), ('카카오', '2021-08-10 16:29:45.387042')]
 
-    text = (
-        f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!"
-        if len(keywords) == 0
-        else f"{bookmark} 현재 키워드 목록 {bookmark}\n\n{nl.join([kw[0]+'**' if kw[1]==1 else kw[0] for kw in keywords])}"
-    )
-    context.bot.send_message(chat_id, text)
+    if len(keywords) == 0:
+        text = f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!"
+    else:
+        # for i in keywords:
+        #     print(i)
+        listup = [f'[{idx+1:^5d}] {kw[1]} **{kw[2]}' if kw[3]==1 else f'[{idx+1:^5d}] {kw[1]}' for idx, kw in enumerate(keywords)]
+        text = f"{bookmark} 현재 키워드 목록 {bookmark}\n\n{nl.join(listup)}"
+
+    return text, keywords
 
 
 def add_keyword(update: Update, context: CallbackContext) -> None:
@@ -171,27 +174,54 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
         )
         update.message.reply_text(text)
 
-    elif input_keyword.endswith("**"):
-        input_keyword = input_keyword.strip("**")
-        handler.add_keyword(id=chat_id, keyword=input_keyword, mode=1)
-        update.message.reply_text(f'[제목필터]"{input_keyword}" 추가/삭제 완료!')
-        current_keyword(update, context)
+    elif "**" in input_keyword:
+        search_keyword, title_filter = input_keyword.split("**")
+        search_keyword = search_keyword.strip()
+        title_filter = title_filter.strip()
+
+        handler.add_keyword(id=chat_id, keyword=search_keyword, title_filter=title_filter, mode=1)
+        update.message.reply_text(f'[제목필터]"{search_keyword}" 추가 완료!')
+
+        kw_text, _ = current_keyword(update, context)
+        context.bot.send_message(chat_id, kw_text)
+
 
     elif input_keyword is not None:
         # If there is no keyword in the list, then add keyword and its new list to store old links
         result = handler.add_keyword(id=chat_id, keyword=input_keyword, mode=0)
+        
         if result:
-            update.message.reply_text(f'[전체]"{input_keyword}" 추가/삭제 완료!')
+            update.message.reply_text(f'[전체알림]"{input_keyword}" 추가 완료!')
         else:
             # Deleted message doesn't work. should get current status from the query.
             update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
-        current_keyword(update, context)
+        # current_keyword(update, context)
+        kw_text, _ = current_keyword(update, context)
+        context.bot.send_message(chat_id, kw_text)
 
     # else:
     #     del old_links_dict[input_keyword]
     #     update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
 
     # update_user_db(user_db)
+
+def delete_keyword(update: Update, context: CallbackContext) -> int:
+    chat_id = update.message.chat_id
+    try:
+        # args[0] should contain the time for the timer in seconds.
+        keyword_num = int(context.args[0]) - 1
+        kw_text, kw_data = current_keyword(update, context)
+
+        handler.del_keyword(id=chat_id, delete_id=kw_data[keyword_num][0])
+        update.message.reply_text(f"{minus} [{kw_data[keyword_num][1]}] 삭제 완료!")
+
+
+    except (IndexError, ValueError):
+        update.message.reply_text("/del 삭제할 키워드 번호")
+
+    kw_text, _ = current_keyword(update, context)
+    context.bot.send_message(chat_id, kw_text)
+
 
 
 def check_alert_interval(chat_id: str, update: Update, context: CallbackContext):
@@ -215,10 +245,11 @@ def button(update: Update, context: CallbackContext) -> None:
     if choice == "1":
         # Add a keyword to the list
         current_keyword(update, context)
-        context.bot.send_message(chat_id=chat_id, text=f"추가 혹은 삭제할 키워드를 입력하세요.")
+        context.bot.send_message(chat_id=chat_id, text=f"삭제할 키워드의 ID를 입력하세요.")
 
     elif choice == "2":
-        current_keyword(update, context)
+        kw_text, _ = current_keyword(update, context)
+        context.bot.send_message(chat_id, kw_text)
 
     elif choice == "3":
         interval = check_alert_interval(chat_id, update, context)
@@ -241,21 +272,26 @@ def send_links(context: CallbackContext) -> None:
     chat_id = str(job.context)
 
     keywords = handler.get_keyword(chat_id)
+    # print(keywords)
     # keywords = [kw[0] for kw in keywords]
     current_jobs = context.job_queue.get_jobs_by_name(chat_id)
 
     for keyword in keywords:
-        kw, mode, _ = keyword
+        kw_id, kw, title_filter, mode, _ = keyword
         updater = newsUpdater(query=kw, sort=1)
         old_links = handler.get_links(chat_id, kw)
         old_links = [link[2] for link in old_links]
-        new_links = updater.get_updated_news(old_links=old_links)
+        new_links, search_desc = updater.get_updated_news(old_links=old_links)
 
+        # Title filter for given words
         if mode == 1:
             # If the keyword has a title filter. -> check if the title is containing any of the keyword(s).
-            only_words = re.sub(r"\W+", " ", kw).split()
-            check_ = lambda title: any(word in title for word in only_words)
+            # only_words = re.sub(r"\W+", " ", kw).split()
+            title_filter = title_filter.strip().split(';')
+            check_ = lambda title: all(word.strip() in title for word in title_filter)
+            # check_ = lambda title: any(word in title for word in only_words)
             new_links = [link for link in new_links if check_(link["title"])]
+            search_desc += f" + [{', '.join(title_filter)}] 제목에 포함"
 
         else:
             pass
@@ -264,7 +300,7 @@ def send_links(context: CallbackContext) -> None:
 
             context.bot.send_message(
                 chat_id=chat_id,
-                text=f"{siren} [{kw}] 새로운 뉴스 {len(new_links)}건 {siren}",
+                text=f"{siren} [{kw}] 새로운 뉴스 {len(new_links)}건 {siren}\n- {search_desc}",
             )
             for link in new_links[::-1]:
                 context.bot.send_message(
@@ -356,6 +392,7 @@ def main() -> None:
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("set", set_timer))
     dp.add_handler(CommandHandler("unset", unset))
+    dp.add_handler(CommandHandler("del", delete_keyword))
 
     dp.add_handler(CallbackQueryHandler(button))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, add_keyword))

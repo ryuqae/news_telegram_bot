@@ -14,16 +14,18 @@ class Handler:
         (
             self.user_id,
             self.username,
+            self.keyword_id,
             self.keyword,
+            self.title_filter,
             self.url,
             self.title,
             self.added_timestamp,
             self.active,
             self.mode
-        ) = "uid name query url title added_timestamp active mode".split()
+        ) = "uid name kw_id query title_filter url title added_timestamp active mode".split()
 
         user_init = f"""CREATE TABLE IF NOT EXISTS {self.user_table} ({self.user_id} INTEGER NOT NULL, {self.username} TEXT, {self.added_timestamp} TEXT, {self.active} INTEGER, PRIMARY KEY({self.user_id}))"""
-        keyword_init = f"""CREATE TABLE IF NOT EXISTS {self.keyword_table} ({self.user_id} INTEGER NOT NULL, {self.keyword} TEXT, {self.added_timestamp} TEXT, {self.active} INTEGER, {self.mode} INTEGER, UNIQUE({self.user_id}, {self.keyword}, {self.mode}))"""
+        keyword_init = f"""CREATE TABLE IF NOT EXISTS {self.keyword_table} ({self.keyword_id} INTEGER PRIMARY KEY AUTOINCREMENT, {self.user_id} INTEGER NOT NULL, {self.keyword} TEXT, {self.title_filter} TEXT NOT NULL, {self.added_timestamp} TEXT, {self.active} INTEGER, {self.mode} INTEGER, UNIQUE({self.user_id}, {self.keyword}, {self.mode}))"""
         article_init = f"""CREATE TABLE IF NOT EXISTS {self.article_table} ({self.user_id} INTEGER NOT NULL, {self.keyword} TEXT, {self.url} TEXT NOT NULL, {self.title} TEXT, {self.added_timestamp} TEXT, {self.active} INTEGER, UNIQUE({self.user_id}, {self.keyword}, {self.url}))"""
 
         with sqlite3.connect(db_file) as conn:
@@ -82,14 +84,22 @@ class Handler:
 
         return self._update(sql, row)
 
-    def add_keyword(self, id: int, keyword: str, mode:int):
+    def add_keyword(self, id: int, keyword: str, mode:int, title_filter:str="None"):
         sql = f"""
-        INSERT INTO {self.keyword_table}({self.user_id}, {self.keyword}, {self.added_timestamp}, {self.active}, {self.mode}) VALUES(?,?,?,?,?)
-        ON CONFLICT({self.user_id}, {self.keyword}, {self.mode}) DO UPDATE SET {self.active} = {self.active} * -1
+        INSERT INTO {self.keyword_table}({self.user_id}, {self.keyword}, {self.title_filter}, {self.added_timestamp}, {self.active}, {self.mode}) VALUES(?,?,?,?,?,?)
+        ON CONFLICT({self.user_id}, {self.keyword}, {self.mode}) 
+        DO UPDATE SET {self.title_filter} = excluded.{self.title_filter}, {self.active} = 1
         """
-        row = [(id, keyword, datetime.now(), True, mode)]
+
+        row = [(id, keyword, title_filter, datetime.now(), True, mode)]
 
         return self._update(sql, row)
+
+    def del_keyword(self, id: int, delete_id:int):
+        sql = f"""UPDATE {self.keyword_table} SET {self.active} = -1
+        WHERE {self.keyword_id} = {delete_id}
+        """
+        return self._update(sql)
 
     def del_account(self, id: int):
         kw_sql = f"""
@@ -103,7 +113,7 @@ class Handler:
 
     def get_keyword(self, id: int):
         sql = f"""
-        SELECT {self.keyword}, {self.mode}, {self.added_timestamp} FROM {self.keyword_table} WHERE {self.user_id}={id} AND {self.active}=1
+        SELECT {self.keyword_id}, {self.keyword}, {self.title_filter}, {self.mode}, {self.added_timestamp} FROM {self.keyword_table} WHERE {self.user_id}={id} AND {self.active}=1
         """
         return self._get(sql)
 
@@ -122,7 +132,6 @@ class Handler:
             (id, keyword, article["link"], article["title"], datetime.now(), 1)
             for article in articles
         ]
-        # print("ADD LINK DATA", data)
 
         return self._update(sql, data)
 

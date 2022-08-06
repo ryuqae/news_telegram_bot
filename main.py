@@ -273,10 +273,10 @@ def send_links(context: CallbackContext) -> None:
                 )
             handler.add_links(chat_id, kw, new_links)
 
-            context.bot.send_message(
-                chat_id=chat_id,
-                text=f"{lightning} Quick /start {lightning}",
-            )
+            # context.bot.send_message(
+            #     chat_id=chat_id,
+            #     text=f"{lightning} Quick /start {lightning}",
+            # )
         elif len(current_jobs) == 0:
             # No news notification only for no job exist case.
             context.bot.send_message(
@@ -344,10 +344,10 @@ def main() -> None:
     # Reboot Message for the next version
     bot = telegram.Bot(token=TOKEN)
     all_active_users = [user[0] for user in handler.get_user()]
-    for user_id in all_active_users:
-        bot.sendMessage(
-            chat_id=user_id, text=f"{siren} 봇이 재시작되어 알림이 해제되었습니다. 다시 설정해 주세요!"
-        )
+    # for user_id in all_active_users:
+    #     bot.sendMessage(
+    #         chat_id=user_id, text=f"{siren} 봇이 재시작되어 알림이 해제되었습니다. 다시 설정해 주세요!"
+    #     )
 
     updater = Updater(TOKEN)
 

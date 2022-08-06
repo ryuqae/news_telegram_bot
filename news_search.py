@@ -9,7 +9,7 @@ class newsUpdater:
         """
         query : should be encoded
         sort : 0 - related, 1 - recent
-        qdt : 0- general search, 1 - detail search enabled
+        qdt : 0 - general search, 1 - detail search enabled
         pd : 4 - within a day
         """
         self.query = parse.quote(query)

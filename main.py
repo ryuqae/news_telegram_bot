@@ -35,11 +35,13 @@ logger = logging.getLogger(__name__)
 parser = argparse.ArgumentParser(description="Process some integers.")
 parser.add_argument(
     "--DB_FILE", required=True, help="Database filename"
+
 )
 parser.add_argument(
     "--TOKEN_FILE",
     required=False,
     default="auth/access_token.txt",
+
     help="Access token filename",
 )
 parser.add_argument("--MIN_DUR", required=True, help="Minimum duration for alert")
@@ -309,6 +311,7 @@ def send_links(context: CallbackContext) -> None:
                 )
             handler.add_links(chat_id, kw, new_links)
 
+
             # context.bot.send_message(
             #     chat_id=chat_id,
             #     text=f"{lightning} Quick /start {lightning}",
@@ -384,6 +387,7 @@ def main() -> None:
     #     bot.sendMessage(
     #         chat_id=user_id, text=f"{siren} 봇이 재시작되어 알림이 해제되었습니다. 다시 설정해 주세요!"
     #     )
+
 
     updater = Updater(TOKEN)
 

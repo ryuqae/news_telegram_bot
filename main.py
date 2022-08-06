@@ -34,12 +34,12 @@ logger = logging.getLogger(__name__)
 # Parsing arguments
 parser = argparse.ArgumentParser(description="Process some integers.")
 parser.add_argument(
-    "--DB_FILE", required=False, default="new6.db", help="Database filename"
+    "--DB_FILE", required=True, help="Database filename"
 )
 parser.add_argument(
     "--TOKEN_FILE",
     required=False,
-    default="access_token_test.txt",
+    default="auth/access_token.txt",
     help="Access token filename",
 )
 parser.add_argument("--MIN_DUR", required=True, help="Minimum duration for alert")

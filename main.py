@@ -33,15 +33,11 @@ logger = logging.getLogger(__name__)
 
 # Parsing arguments
 parser = argparse.ArgumentParser(description="Process some integers.")
-parser.add_argument(
-    "--DB_FILE", required=True, help="Database filename"
-
-)
+parser.add_argument("--DB_FILE", required=True, help="Database filename")
 parser.add_argument(
     "--TOKEN_FILE",
     required=False,
     default="auth/access_token.txt",
-
     help="Access token filename",
 )
 parser.add_argument("--MIN_DUR", required=True, help="Minimum duration for alert")
@@ -153,7 +149,12 @@ def current_keyword(update: Update, context: CallbackContext) -> list:
     else:
         # for i in keywords:
         #     print(i)
-        listup = [f'[{idx+1:^5d}] {kw[1]} **{kw[2]}' if kw[3]==1 else f'[{idx+1:^5d}] {kw[1]}' for idx, kw in enumerate(keywords)]
+        listup = [
+            f"[{idx+1:^5d}] {kw[1]} **{kw[2]}"
+            if kw[3] == 1
+            else f"[{idx+1:^5d}] {kw[1]}"
+            for idx, kw in enumerate(keywords)
+        ]
         text = f"{bookmark} 현재 키워드 목록 {bookmark}\n\n{nl.join(listup)}"
 
     return text, keywords
@@ -181,17 +182,18 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
         search_keyword = search_keyword.strip()
         title_filter = title_filter.strip()
 
-        handler.add_keyword(id=chat_id, keyword=search_keyword, title_filter=title_filter, mode=1)
+        handler.add_keyword(
+            id=chat_id, keyword=search_keyword, title_filter=title_filter, mode=1
+        )
         update.message.reply_text(f'[제목필터]"{search_keyword}" 추가 완료!')
 
         kw_text, _ = current_keyword(update, context)
         context.bot.send_message(chat_id, kw_text)
 
-
     elif input_keyword is not None:
         # If there is no keyword in the list, then add keyword and its new list to store old links
         result = handler.add_keyword(id=chat_id, keyword=input_keyword, mode=0)
-        
+
         if result:
             update.message.reply_text(f'[전체알림]"{input_keyword}" 추가 완료!')
         else:
@@ -207,6 +209,7 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
 
     # update_user_db(user_db)
 
+
 def delete_keyword(update: Update, context: CallbackContext) -> int:
     chat_id = update.message.chat_id
     try:
@@ -217,13 +220,11 @@ def delete_keyword(update: Update, context: CallbackContext) -> int:
         handler.del_keyword(id=chat_id, delete_id=kw_data[keyword_num][0])
         update.message.reply_text(f"{minus} [{kw_data[keyword_num][1]}] 삭제 완료!")
 
-
     except (IndexError, ValueError):
         update.message.reply_text("/del 삭제할 키워드 번호")
 
     kw_text, _ = current_keyword(update, context)
     context.bot.send_message(chat_id, kw_text)
-
 
 
 def check_alert_interval(chat_id: str, update: Update, context: CallbackContext):
@@ -289,7 +290,7 @@ def send_links(context: CallbackContext) -> None:
         if mode == 1:
             # If the keyword has a title filter. -> check if the title is containing any of the keyword(s).
             # only_words = re.sub(r"\W+", " ", kw).split()
-            title_filter = title_filter.strip().split(';')
+            title_filter = title_filter.strip().split(";")
             check_ = lambda title: all(word.strip() in title for word in title_filter)
             # check_ = lambda title: any(word in title for word in only_words)
             new_links = [link for link in new_links if check_(link["title"])]
@@ -310,7 +311,6 @@ def send_links(context: CallbackContext) -> None:
                     text=f"[{kw}]\n{link['title']}\n{link['link']}",
                 )
             handler.add_links(chat_id, kw, new_links)
-
 
             # context.bot.send_message(
             #     chat_id=chat_id,
@@ -387,7 +387,6 @@ def main() -> None:
     #     bot.sendMessage(
     #         chat_id=user_id, text=f"{siren} 봇이 재시작되어 알림이 해제되었습니다. 다시 설정해 주세요!"
     #     )
-
 
     updater = Updater(TOKEN)
 

@@ -23,13 +23,16 @@ class newsUpdater:
         soup = bs(result_html, "html.parser")
 
         search_result = soup.select_one("#news_result_list")
-        search_desc = soup.select_one("#ct > div.sp_nkeyword.sp_nkeyword_etc > div > div")
-        
+        search_desc = soup.select_one(
+            "#ct > div.sp_nkeyword.sp_nkeyword_etc > div > div"
+        )
+
         # Search description
         if search_desc:
             search_desc.a.decompose()
             search_desc = search_desc.text
-        else: search_desc = "일반검색"
+        else:
+            search_desc = "일반검색"
 
         try:
             news_links = search_result.select(".bx > .news_wrap > a")
@@ -65,8 +68,7 @@ class newsUpdater:
         links, search_desc = self._get_news()
 
         # print(search_desc)
-        #  '습도 더운'을 하나이상 포함한 검색결과 중 '오늘' '내일'을 포함한 상세검색 결과입니다.  
-
+        #  '습도 더운'을 하나이상 포함한 검색결과 중 '오늘' '내일'을 포함한 상세검색 결과입니다.
 
         # Handling the database based on the time newslinks were added
         # now = datetime.now()
@@ -86,12 +88,10 @@ class newsUpdater:
 if __name__ == "__main__":
     import time
 
-    a = newsUpdater(query='+오늘 +내일 습도 | 더운', sort=1)
+    a = newsUpdater(query="+오늘 +내일 습도 | 더운", sort=1)
     b = newsUpdater(query='+오늘 +내일 습도 | 더운 | "일기 예보" ** 아니', sort=1)
     c = newsUpdater(query='+오늘 +내일 습도 | 더운 | "일기 예보" ** 아니', sort=1)
 
-
     news_ = a.get_updated_news([])
-    print("num_news" , len(news_))
-    print(news_[0:2],"\n")
-
+    print("num_news", len(news_))
+    print(news_[0:2], "\n")

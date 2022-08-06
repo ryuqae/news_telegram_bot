@@ -21,7 +21,7 @@ class Handler:
             self.title,
             self.added_timestamp,
             self.active,
-            self.mode
+            self.mode,
         ) = "uid name kw_id query title_filter url title added_timestamp active mode".split()
 
         user_init = f"""CREATE TABLE IF NOT EXISTS {self.user_table} ({self.user_id} INTEGER NOT NULL, {self.username} TEXT, {self.added_timestamp} TEXT, {self.active} INTEGER, PRIMARY KEY({self.user_id}))"""
@@ -84,7 +84,7 @@ class Handler:
 
         return self._update(sql, row)
 
-    def add_keyword(self, id: int, keyword: str, mode:int, title_filter:str="None"):
+    def add_keyword(self, id: int, keyword: str, mode: int, title_filter: str = "None"):
         sql = f"""
         INSERT INTO {self.keyword_table}({self.user_id}, {self.keyword}, {self.title_filter}, {self.added_timestamp}, {self.active}, {self.mode}) VALUES(?,?,?,?,?,?)
         ON CONFLICT({self.user_id}, {self.keyword}, {self.mode}) 
@@ -95,7 +95,7 @@ class Handler:
 
         return self._update(sql, row)
 
-    def del_keyword(self, id: int, delete_id:int):
+    def del_keyword(self, id: int, delete_id: int):
         sql = f"""UPDATE {self.keyword_table} SET {self.active} = -1
         WHERE {self.keyword_id} = {delete_id}
         """

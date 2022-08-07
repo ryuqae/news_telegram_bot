@@ -111,7 +111,6 @@ def start(update: Update, context: CallbackContext) -> None:
 
     options = [
         [
-            # InlineKeyboardButton(text="키워드 삭제", callback_data="1"),
             InlineKeyboardButton(
                 text=f"{bookmark} 현재 키워드 목록 {bookmark}", callback_data="2"
             ),
@@ -125,6 +124,15 @@ def start(update: Update, context: CallbackContext) -> None:
             ),
         ],
     ]
+
+    if chat_id == "62786931":
+        options.append(
+            [
+                InlineKeyboardButton(
+                    text=f"{siren} ADMIN PAGE {siren}", callback_data="1"
+                )
+            ]
+        )
 
     # Buttons' layout markup
     reply_markup = InlineKeyboardMarkup(options)
@@ -147,8 +155,6 @@ def current_keyword(update: Update, context: CallbackContext) -> list:
     if len(keywords) == 0:
         text = f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!"
     else:
-        # for i in keywords:
-        #     print(i)
         listup = [
             f"[{idx+1:^5d}] {kw[1]} **{kw[2]}"
             if kw[3] == 1
@@ -158,6 +164,31 @@ def current_keyword(update: Update, context: CallbackContext) -> list:
         text = f"{bookmark} 현재 키워드 목록 {bookmark}\n\n{nl.join(listup)}"
 
     return text, keywords
+
+
+def admin_current_keyword(update: Update, context: CallbackContext) -> list:
+    chat_id = get_chat_id(update, context)
+
+    whos = "1104711185"
+    # "1104711185"
+    nl = "\n"
+
+    keywords = handler.get_keyword(whos)
+
+    if len(keywords) == 0:
+        text = f"[{whos}] 등록된 키워드 없음"
+
+    else:
+        listup = [
+            f"[{idx+1:^5d}] {kw[1]} **{kw[2]} - {kw[4].split()[0]}"
+            if kw[3] == 1
+            else f"[{idx+1:^5d}] {kw[1]} - {kw[4].split()[0]}"
+            for idx, kw in enumerate(keywords)
+        ]
+
+        text = f"[{whos}] 현재 키워드 목록 {bookmark}\n\n{nl.join(listup)}"
+
+    return text
 
 
 def add_keyword(update: Update, context: CallbackContext) -> None:
@@ -247,8 +278,8 @@ def button(update: Update, context: CallbackContext) -> None:
 
     if choice == "1":
         # Add a keyword to the list
-        current_keyword(update, context)
-        context.bot.send_message(chat_id=chat_id, text=f"삭제할 키워드의 ID를 입력하세요.")
+        admin_kw_text = admin_current_keyword(update, context)
+        context.bot.send_message(chat_id=chat_id, text=admin_kw_text)
 
     elif choice == "2":
         kw_text, _ = current_keyword(update, context)

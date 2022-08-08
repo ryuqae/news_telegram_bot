@@ -148,12 +148,21 @@ def start(update: Update, context: CallbackContext) -> None:
 def current_keyword(update: Update, context: CallbackContext) -> list:
     chat_id = get_chat_id(update, context)
     nl = "\n"
+    chunk_size = 20
+
+    # listup_keywords = lambda keywords: [
+    #         f"[{idx+1:^5d}] {kw[1]} **{kw[2]}"
+    #         if kw[3] == 1
+    #         else f"[{idx+1:^5d}] {kw[1]}"
+    #         for idx, kw in enumerate(keywords)
+    #     ]
 
     keywords = handler.get_keyword(chat_id)
     # [('나나나', 1, '2021-08-10 16:36:38.117548'), ('삼성물산', 0, '2021-08-10 16:29:58.278979'), ('삼성전자', '2021-08-10 16:29:26.077459'), ('옹', '2021-08-10 16:36:36.157206'), ('자반고등어', '2021-08-10 16:36:40.397227'), ('카카오', '2021-08-10 16:29:45.387042')]
 
     if len(keywords) == 0:
-        text = f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!"
+        return [f"{siren} 등록된 키워드가 없습니다.\n키워드를 추가하세요!"], None
+
     else:
         listup = [
             f"[{idx+1:^5d}] {kw[1]} **{kw[2]}"
@@ -161,22 +170,36 @@ def current_keyword(update: Update, context: CallbackContext) -> list:
             else f"[{idx+1:^5d}] {kw[1]}"
             for idx, kw in enumerate(keywords)
         ]
-        text = f"{bookmark} 현재 키워드 목록 {bookmark}\n\n{nl.join(listup)}"
 
-    return text, keywords
+        header = f"{bookmark} 현재 키워드 목록 [ {len(keywords)}개 ] {bookmark}"
+        chunks = [
+            nl.join(listup[i : i + chunk_size])
+            for i in range(0, len(listup), chunk_size)
+        ]
+        chunks.insert(0, header)
+
+        return chunks, keywords
+
+        """
+        [  1  ] +김용태 국민의힘 | 최고위원 **김용태
+        [  2  ] +날씨 오늘 | 장마 | 강수량 **날씨;서울
+        [  3  ] +이준석 +윤석열 국민의힘 | 대통령 | 비대위 **이준석;비대위
+        [  4  ] 기아자동차 **전망
+        [  5  ] 삼성전자 **주가
+        [  6  ] 현대자동차 **아이오닉7
+        [  7  ] 확진자 **코로나;최다
+        """
 
 
 def admin_current_keyword(update: Update, context: CallbackContext) -> list:
-    chat_id = get_chat_id(update, context)
-
     whos = "1104711185"
-    # "1104711185"
     nl = "\n"
+    chunk_size = 20
 
     keywords = handler.get_keyword(whos)
 
     if len(keywords) == 0:
-        text = f"[{whos}] 등록된 키워드 없음"
+        return [f"[{whos}] 등록된 키워드 없음"], None
 
     else:
         listup = [
@@ -186,9 +209,14 @@ def admin_current_keyword(update: Update, context: CallbackContext) -> list:
             for idx, kw in enumerate(keywords)
         ]
 
-        text = f"[{whos}] 현재 키워드 목록 {bookmark}\n\n{nl.join(listup)}"
+        header = f"{bookmark} 현재 {whos} 키워드 목록 [ {len(keywords)}개 ] {bookmark}"
+        chunks = [
+            nl.join(listup[i : i + chunk_size])
+            for i in range(0, len(listup), chunk_size)
+        ]
+        chunks.insert(0, header)
 
-    return text
+        return chunks, keywords
 
 
 def add_keyword(update: Update, context: CallbackContext) -> None:
@@ -219,7 +247,8 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
         update.message.reply_text(f'[제목필터]"{search_keyword}" 추가 완료!')
 
         kw_text, _ = current_keyword(update, context)
-        context.bot.send_message(chat_id, kw_text)
+        for chunk in kw_text:
+            context.bot.send_message(chat_id, chunk)
 
     elif input_keyword is not None:
         # If there is no keyword in the list, then add keyword and its new list to store old links
@@ -232,7 +261,8 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
             update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
         # current_keyword(update, context)
         kw_text, _ = current_keyword(update, context)
-        context.bot.send_message(chat_id, kw_text)
+        for chunk in kw_text:
+            context.bot.send_message(chat_id, chunk)
 
     # else:
     #     del old_links_dict[input_keyword]
@@ -246,7 +276,7 @@ def delete_keyword(update: Update, context: CallbackContext) -> int:
     try:
         # args[0] should contain the time for the timer in seconds.
         keyword_num = int(context.args[0]) - 1
-        kw_text, kw_data = current_keyword(update, context)
+        _, kw_data = current_keyword(update, context)
 
         handler.del_keyword(id=chat_id, delete_id=kw_data[keyword_num][0])
         update.message.reply_text(f"{minus} [{kw_data[keyword_num][1]}] 삭제 완료!")
@@ -255,7 +285,8 @@ def delete_keyword(update: Update, context: CallbackContext) -> int:
         update.message.reply_text("/del 삭제할 키워드 번호")
 
     kw_text, _ = current_keyword(update, context)
-    context.bot.send_message(chat_id, kw_text)
+    for chunk in kw_text:
+        context.bot.send_message(chat_id, chunk)
 
 
 def check_alert_interval(chat_id: str, update: Update, context: CallbackContext):
@@ -278,12 +309,15 @@ def button(update: Update, context: CallbackContext) -> None:
 
     if choice == "1":
         # Add a keyword to the list
-        admin_kw_text = admin_current_keyword(update, context)
-        context.bot.send_message(chat_id=chat_id, text=admin_kw_text)
+        admin_kw_text, _ = admin_current_keyword(update, context)
+        for chunk in admin_kw_text:
+            context.bot.send_message(chat_id, chunk)
 
     elif choice == "2":
         kw_text, _ = current_keyword(update, context)
-        context.bot.send_message(chat_id, kw_text)
+        for chunk in kw_text:
+            context.bot.send_message(chat_id, chunk)
+        # context.bot.send_message(chat_id, kw_text)
 
     elif choice == "3":
         interval = check_alert_interval(chat_id, update, context)
@@ -343,10 +377,6 @@ def send_links(context: CallbackContext) -> None:
                 )
             handler.add_links(chat_id, kw, new_links)
 
-            # context.bot.send_message(
-            #     chat_id=chat_id,
-            #     text=f"{lightning} Quick /start {lightning}",
-            # )
         elif len(current_jobs) == 0:
             # No news notification only for no job exist case.
             context.bot.send_message(

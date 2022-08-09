@@ -224,7 +224,6 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
     chat_id = get_chat_id(update, context)
 
     input_keyword = update.message.text.strip()
-    # print(f"user {user.first_name}'s new keyword is {input_keyword}")
 
     if input_keyword == "초기화!":
         unset(update, context)
@@ -259,16 +258,10 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
         else:
             # Deleted message doesn't work. should get current status from the query.
             update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
-        # current_keyword(update, context)
+            
         kw_text, _ = current_keyword(update, context)
         for chunk in kw_text:
             context.bot.send_message(chat_id, chunk)
-
-    # else:
-    #     del old_links_dict[input_keyword]
-    #     update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
-
-    # update_user_db(user_db)
 
 
 def delete_keyword(update: Update, context: CallbackContext) -> int:
@@ -345,7 +338,7 @@ def send_links(context: CallbackContext) -> None:
     current_jobs = context.job_queue.get_jobs_by_name(chat_id)
 
     for keyword in keywords:
-        kw_id, kw, title_filter, mode, _ = keyword
+        _, kw, title_filter, mode, _ = keyword
         updater = newsUpdater(query=kw, sort=1)
         old_links = handler.get_links(chat_id, kw)
         old_links = [link[2] for link in old_links]
@@ -353,8 +346,7 @@ def send_links(context: CallbackContext) -> None:
 
         # Title filter for given words
         if mode == 1:
-            # If the keyword has a title filter. -> check if the title is containing any of the keyword(s).
-            # only_words = re.sub(r"\W+", " ", kw).split()
+            # If the keyword has a title filter. -> check if the title is containing ALL of the keyword(s).
             title_filter = title_filter.strip().split(";")
             check_ = lambda title: all(word.strip() in title for word in title_filter)
             # check_ = lambda title: any(word in title for word in only_words)
@@ -444,10 +436,16 @@ def main() -> None:
     # Reboot Message for the next version
     bot = telegram.Bot(token=TOKEN)
     all_active_users = [user[0] for user in handler.get_user()]
-    # for user_id in all_active_users:
-    #     bot.sendMessage(
-    #         chat_id=user_id, text=f"{siren} 봇이 재시작되어 알림이 해제되었습니다. 다시 설정해 주세요!"
-    #     )
+
+    for user_id in all_active_users:
+        try:
+            bot.sendMessage(
+                chat_id=user_id, text=f"{siren} 봇이 재시작되어 알림이 해제되었습니다. 다시 설정해 주세요!"
+            )
+        except telegram.error.BadRequest as e:
+            logger.warning(msg=e)
+            pass
+
 
     updater = Updater(TOKEN)
 

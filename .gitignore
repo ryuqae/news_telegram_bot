@@ -1,8 +1,7 @@
 __pycache__/
-auth/
-database/
 .vscode/
+*.db
 *.out
-*.sh
 *.pid
 *.log
+*_token.txt

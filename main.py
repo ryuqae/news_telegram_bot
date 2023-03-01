@@ -258,7 +258,7 @@ def add_keyword(update: Update, context: CallbackContext) -> None:
         else:
             # Deleted message doesn't work. should get current status from the query.
             update.message.reply_text(f"{minus} [{input_keyword}] 삭제 완료!")
-            
+
         kw_text, _ = current_keyword(update, context)
         for chunk in kw_text:
             context.bot.send_message(chat_id, chunk)
@@ -446,6 +446,9 @@ def main() -> None:
             logger.warning(msg=e)
             pass
 
+        except telegram.error.Unauthorized as e1:
+            logger.warning(msg=e1)
+            pass
 
     updater = Updater(TOKEN)
 
